@@ -189,7 +189,7 @@ internal fun convert(
 internal actual fun Node.toAstNode() = convert(this)
 
 @Composable
-internal actual fun parsedMarkdown(text: String, options: MarkdownParseOptions): Node? {
+public actual fun parsedMarkdown(text: String, options: MarkdownParseOptions): Node? {
   val parser = remember(options) {
     Parser.builder()
       .extensions(
