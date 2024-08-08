@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -26,6 +27,7 @@ import com.halilibo.richtext.ui.currentRichTextStyle
 import com.halilibo.richtext.ui.string.RichTextString.Format
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.sample
+import kotlinx.coroutines.launch
 import java.io.Console
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -51,37 +53,46 @@ public fun RichTextScope.Text(
     text.toAnnotatedString(resolvedStyle, contentColor)
   }
 
-  val renderedWords = remember { mutableStateOf(AnnotatedString("")) }
-  val newWords = remember { mutableStateOf(AnnotatedString("")) }
-  val lastWordsVisibility = remember{ Animatable(0f) }
+  val rendered = remember { mutableStateOf("") }
   val debouncedTextFlow = remember { MutableStateFlow(AnnotatedString("")) }
   val coroutineScope = rememberCoroutineScope()
-  val debouncedText by remember { debouncedTextFlow.sample(300.milliseconds) }.collectAsState(AnnotatedString(""), coroutineScope.coroutineContext)
+  val debouncedText by remember { debouncedTextFlow.sample(300.milliseconds) }
+    .collectAsState(AnnotatedString(""), coroutineScope.coroutineContext)
 
   LaunchedEffect(text) {
     debouncedTextFlow.value = annotated
   }
+
+  val textSlices = remember { mutableStateListOf(AnnotatedString("")) }
   LaunchedEffect(debouncedText) {
     // log the state
-    println("Adding new words: ${newWords.value} to rendered words: ${renderedWords.value.text}")
-    if (debouncedText.length >= renderedWords.value.length + newWords.value.length) {
-      renderedWords.value = debouncedText.subSequence(0, renderedWords.value.length + newWords.value.length)
-      newWords.value = debouncedText.subSequence(renderedWords.value.length, debouncedText.length)
-    } else {
-      renderedWords.value = debouncedText
-      newWords.value = AnnotatedString("")
+    if (debouncedText.length > rendered.value.length) {
+      val newWords = debouncedText.subSequence(rendered.value.length, debouncedText.length)
+      rendered.value += newWords.text
+      val sliceIndex = textSlices.size
+      textSlices.add(newWords)
+      coroutineScope.launch {
+        Animatable(0f).animateTo(
+          targetValue = 1f,
+          animationSpec = tween(durationMillis = 1000)
+        ) {
+          val newWordsStyles = newWords.spanStyles.map { spanstyle ->
+            spanstyle.copy(item = spanstyle.item.copy(color = spanstyle.item.color.copy(alpha = value)))
+          }.ifEmpty {
+            listOf(
+              AnnotatedString.Range(
+                SpanStyle(contentColor.copy(alpha = value)),
+                0,
+                newWords.length
+              )
+            )
+          }
+          val animatedNewWords = AnnotatedString(newWords.text, newWordsStyles)
+          textSlices[sliceIndex] = animatedNewWords
+        }
+      }
     }
-    lastWordsVisibility.snapTo(0f)
-    lastWordsVisibility.animateTo(
-      targetValue = 1f,
-      animationSpec = tween(durationMillis = 300)
-    )
   }
-
-  val newWordsStyles = newWords.value.spanStyles.map { spanstyle ->
-    spanstyle.copy(item = spanstyle.item.copy(color = spanstyle.item.color.copy(alpha = lastWordsVisibility.value)))
-  }.ifEmpty { listOf(AnnotatedString.Range(SpanStyle(Color.Black.copy(alpha = lastWordsVisibility.value)), 0, newWords.value.length)) }
-  val animatedNewWords = AnnotatedString(newWords.value.text, newWordsStyles)
 
   val inlineContents = remember(text) { text.getInlineContents() }
 
@@ -92,7 +103,7 @@ public fun RichTextScope.Text(
     )
 
     ClickableText(
-      text = renderedWords.value + animatedNewWords,
+      text = textSlices.toList().reduce { acc, annotatedString -> acc + annotatedString },
       onTextLayout = onTextLayout,
       inlineContent = inlineTextContents,
       softWrap = softWrap,
