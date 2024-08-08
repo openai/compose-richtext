@@ -1,17 +1,34 @@
 package com.halilibo.richtext.ui.string
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Color.Companion
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.halilibo.richtext.ui.ClickableText
 import com.halilibo.richtext.ui.RichTextScope
 import com.halilibo.richtext.ui.currentContentColor
 import com.halilibo.richtext.ui.currentRichTextStyle
 import com.halilibo.richtext.ui.string.RichTextString.Format
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.sample
+import java.io.Console
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Renders a [RichTextString] as created with [richTextString].
@@ -34,6 +51,38 @@ public fun RichTextScope.Text(
     text.toAnnotatedString(resolvedStyle, contentColor)
   }
 
+  val renderedWords = remember { mutableStateOf(AnnotatedString("")) }
+  val newWords = remember { mutableStateOf(AnnotatedString("")) }
+  val lastWordsVisibility = remember{ Animatable(0f) }
+  val debouncedTextFlow = remember { MutableStateFlow(AnnotatedString("")) }
+  val coroutineScope = rememberCoroutineScope()
+  val debouncedText by remember { debouncedTextFlow.sample(300.milliseconds) }.collectAsState(AnnotatedString(""), coroutineScope.coroutineContext)
+
+  LaunchedEffect(text) {
+    debouncedTextFlow.value = annotated
+  }
+  LaunchedEffect(debouncedText) {
+    // log the state
+    println("Adding new words: ${newWords.value} to rendered words: ${renderedWords.value.text}")
+    if (debouncedText.length >= renderedWords.value.length + newWords.value.length) {
+      renderedWords.value = debouncedText.subSequence(0, renderedWords.value.length + newWords.value.length)
+      newWords.value = debouncedText.subSequence(renderedWords.value.length, debouncedText.length)
+    } else {
+      renderedWords.value = debouncedText
+      newWords.value = AnnotatedString("")
+    }
+    lastWordsVisibility.snapTo(0f)
+    lastWordsVisibility.animateTo(
+      targetValue = 1f,
+      animationSpec = tween(durationMillis = 300)
+    )
+  }
+
+  val newWordsStyles = newWords.value.spanStyles.map { spanstyle ->
+    spanstyle.copy(item = spanstyle.item.copy(color = spanstyle.item.color.copy(alpha = lastWordsVisibility.value)))
+  }.ifEmpty { listOf(AnnotatedString.Range(SpanStyle(Color.Black.copy(alpha = lastWordsVisibility.value)), 0, newWords.value.length)) }
+  val animatedNewWords = AnnotatedString(newWords.value.text, newWordsStyles)
+
   val inlineContents = remember(text) { text.getInlineContents() }
 
   BoxWithConstraints(modifier = modifier) {
@@ -43,7 +92,7 @@ public fun RichTextScope.Text(
     )
 
     ClickableText(
-      text = annotated,
+      text = renderedWords.value + animatedNewWords,
       onTextLayout = onTextLayout,
       inlineContent = inlineTextContents,
       softWrap = softWrap,

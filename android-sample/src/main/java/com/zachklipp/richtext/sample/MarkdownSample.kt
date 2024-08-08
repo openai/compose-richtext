@@ -35,6 +35,7 @@ import com.halilibo.richtext.markdown.MarkdownParseOptions
 import com.halilibo.richtext.ui.RichTextStyle
 import com.halilibo.richtext.ui.material.RichText
 import com.halilibo.richtext.ui.resolveDefaults
+import kotlinx.coroutines.delay
 
 @Preview
 @Composable private fun MarkdownSamplePreview() {
@@ -47,6 +48,7 @@ import com.halilibo.richtext.ui.resolveDefaults
   var isWordWrapEnabled by remember { mutableStateOf(true) }
   var markdownParseOptions by remember { mutableStateOf(MarkdownParseOptions.Default) }
   var isAutolinkEnabled by remember { mutableStateOf(true) }
+  var restartAnimation by remember { mutableStateOf(1) }
 
   LaunchedEffect(isWordWrapEnabled) {
     richTextStyle = richTextStyle.copy(
@@ -72,32 +74,32 @@ import com.halilibo.richtext.ui.resolveDefaults
           Column {
             CheckboxPreference(
               onClick = {
-                isDarkModeEnabled = !isDarkModeEnabled
+                restartAnimation += 1
               },
-              checked = isDarkModeEnabled,
-              label = "Dark Mode"
+              checked = restartAnimation % 2 == 1,
+              label = "Restart"
             )
 
-            CheckboxPreference(
-              onClick = {
-                isWordWrapEnabled = !isWordWrapEnabled
-              },
-              checked = isWordWrapEnabled,
-              label = "Word Wrap"
-            )
+//            CheckboxPreference(
+//              onClick = {
+//                isWordWrapEnabled = !isWordWrapEnabled
+//              },
+//              checked = isWordWrapEnabled,
+//              label = "Word Wrap"
+//            )
+//
+//            CheckboxPreference(
+//              onClick = {
+//                isAutolinkEnabled = !isAutolinkEnabled
+//              },
+//              checked = isAutolinkEnabled,
+//              label = "Autolink"
+//            )
 
-            CheckboxPreference(
-              onClick = {
-                isAutolinkEnabled = !isAutolinkEnabled
-              },
-              checked = isAutolinkEnabled,
-              label = "Autolink"
-            )
-
-            RichTextStyleConfig(
-              richTextStyle = richTextStyle,
-              onChanged = { richTextStyle = it }
-            )
+//            RichTextStyleConfig(
+//              richTextStyle = richTextStyle,
+//              onChanged = { richTextStyle = it }
+//            )
           }
         }
 
@@ -108,8 +110,20 @@ import com.halilibo.richtext.ui.resolveDefaults
                 style = richTextStyle,
                 modifier = Modifier.padding(8.dp),
               ) {
+                var textLength by remember { mutableStateOf(0) }
+
+                LaunchedEffect(restartAnimation) {
+                  val totalDuration = 100000L // 30 seconds
+                  val delayPerChar = totalDuration / sampleMarkdown.length
+
+                  for (i in 1..sampleMarkdown.length) {
+                    textLength = i
+                    delay(delayPerChar)
+                  }
+                }
+
                 Markdown(
-                  content = sampleMarkdown,
+                  content = sampleMarkdown.take(textLength),
                   markdownParseOptions = markdownParseOptions,
                   onLinkClicked = {
                     Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
@@ -145,8 +159,15 @@ private fun CheckboxPreference(
 
 private val sampleMarkdown = """
   # Demo
-  Based on [this cheatsheet][cheatsheet]
+  Based on (this cheatsheet)[cheatsheet]
 
+  ---
+  
+  This is a patagtraph about nothing. Lotem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+  More lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+  
+  Another paragraph. Parerots are cool. They can fly and talk. They can also be very annoying. But they are still cool.
+  
   ---
 
   ## Headers
