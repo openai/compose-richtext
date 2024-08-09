@@ -55,32 +55,35 @@ public fun RichTextScope.Text(
     text.toAnnotatedString(resolvedStyle, contentColor)
   }
   val animations = remember { mutableStateMapOf<Int, TextAnimation>() }
-  val textToRender = remember { mutableStateOf(annotated) }
+  val textToRender = remember { mutableStateOf(AnnotatedString("")) }
 
   if (animate) {
-    val lastAnimatedIndex = remember { mutableIntStateOf(annotated.length) }
-    val debouncedTextFlow = remember { MutableStateFlow(annotated) }
-    val readyToAnimateText = remember { mutableStateOf(annotated) }
+    val lastAnimatedIndex = remember { mutableIntStateOf(0) }
+    val debouncedTextFlow = remember { MutableStateFlow(AnnotatedString("")) }
+    val readyToAnimateText = remember { mutableStateOf(AnnotatedString("")) }
     val debouncedText by remember { debouncedTextFlow.debounce(250.milliseconds) }
       .collectAsState(AnnotatedString(""), coroutineScope.coroutineContext)
 
     LaunchedEffect(text) {
       debouncedTextFlow.value = annotated
+      if (annotated.hasNewPhraseFrom(textToRender.value.text)) {
+        readyToAnimateText.value = annotated
+      }
     }
+//    LaunchedEffect(Unit) {
+//      textToRender.value = annotated
+//    }
     LaunchedEffect(debouncedText) {
       readyToAnimateText.value = debouncedText
     }
-    if (annotated.hasNewPhraseFrom(textToRender.value.text)) {
-      readyToAnimateText.value = annotated
-    }
 
     LaunchedEffect(readyToAnimateText.value) {
-      if (readyToAnimateText.value.text.length > lastAnimatedIndex.value) {
+      if (readyToAnimateText.value.text.length >= lastAnimatedIndex.value) {
         val animationIndex = lastAnimatedIndex.value
         lastAnimatedIndex.value = readyToAnimateText.value.text.length
         animations[animationIndex] = TextAnimation(animationIndex, 0f)
-        textToRender.value = readyToAnimateText.value
         coroutineScope.launch {
+          textToRender.value = readyToAnimateText.value
           Animatable(0f).animateTo(
             targetValue = 1f,
             animationSpec = tween(durationMillis = 1000)
@@ -105,7 +108,11 @@ public fun RichTextScope.Text(
     textToRender.value = annotated
   }
 
-  val inlineContents = remember(animations) { text.getInlineContents().filter { false }.orEmpty() }
+  val inlineContents = remember(animations) { text.getInlineContents().filter { false } }
+
+  if (textToRender.value.length != annotated.length) {
+    println("Not yet synced. lengths: ${textToRender.value.length} ${annotated.length}")
+  }
 
   val animatedText = textToRender.value.animateAlphas(animations.values, contentColor)
 
@@ -145,7 +152,7 @@ private data class TextAnimation(val startIndex: Int, val alpha: Float)
 
 private fun AnnotatedString.animateAlphas(animations: Collection<TextAnimation>, contentColor: Color): AnnotatedString {
   var remainingText = this
-  println("Animating text: $this")
+  println("Animating text: ${this.length}")
   val modifiedTextSnippets = mutableStateListOf<AnnotatedString>()
   animations.sortedByDescending { it.startIndex }.forEach { animation ->
     if (animation.startIndex < remainingText.length) {
@@ -155,7 +162,7 @@ private fun AnnotatedString.animateAlphas(animations: Collection<TextAnimation>,
       )
       remainingText = remainingText.subSequence(0, animation.startIndex)
     } else {
-      println("Animation index out of bounds: ${animation.startIndex} remaining: ${remainingText.text}")
+      println("Animation index out of bounds: ${animation.startIndex} remaining: ${remainingText.text.length}")
     }
   }
 //  return AnnotatedString.Builder(remainingText).apply {
