@@ -3,6 +3,7 @@ package com.halilibo.richtext.ui.string
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -54,13 +55,13 @@ public fun RichTextScope.Text(
     text.toAnnotatedString(resolvedStyle, contentColor)
   }
   val animations = remember { mutableStateMapOf<Int, TextAnimation>() }
-  val textToRender = remember { mutableStateOf(AnnotatedString("")) }
+  val textToRender = remember { mutableStateOf(annotated) }
 
   if (animate) {
-    val lastAnimatedIndex = remember { mutableIntStateOf(0) }
+    val lastAnimatedIndex = remember { mutableIntStateOf(annotated.length) }
     val debouncedTextFlow = remember { MutableStateFlow(annotated) }
-    val readyToAnimateText = remember { mutableStateOf(AnnotatedString("")) }
-    val debouncedText by remember { debouncedTextFlow.debounce(150.milliseconds) }
+    val readyToAnimateText = remember { mutableStateOf(annotated) }
+    val debouncedText by remember { debouncedTextFlow.debounce(250.milliseconds) }
       .collectAsState(AnnotatedString(""), coroutineScope.coroutineContext)
 
     LaunchedEffect(text) {
@@ -74,13 +75,12 @@ public fun RichTextScope.Text(
     }
 
     LaunchedEffect(readyToAnimateText.value) {
-      if (readyToAnimateText.value.text.length >= lastAnimatedIndex.value) {
+      if (readyToAnimateText.value.text.length > lastAnimatedIndex.value) {
         val animationIndex = lastAnimatedIndex.value
-        lastAnimatedIndex.value = textToRender.value.text.length
-        //println("index: $sliceIndex newWords: ${newWords} current words: ${animatedText.value}")
+        lastAnimatedIndex.value = readyToAnimateText.value.text.length
         animations[animationIndex] = TextAnimation(animationIndex, 0f)
+        textToRender.value = readyToAnimateText.value
         coroutineScope.launch {
-          textToRender.value = readyToAnimateText.value
           Animatable(0f).animateTo(
             targetValue = 1f,
             animationSpec = tween(durationMillis = 1000)
@@ -90,6 +90,7 @@ public fun RichTextScope.Text(
           animations.remove(animationIndex)
         }
       } else {
+        textToRender.value = readyToAnimateText.value
 //        println("Text has changed. nuking")
 //        println("Was: ${animatedText.value}")
 //        println("Now: ${textToRender.value.text}")
@@ -104,7 +105,7 @@ public fun RichTextScope.Text(
     textToRender.value = annotated
   }
 
-  val inlineContents = remember(text) { text.getInlineContents() }
+  val inlineContents = remember(animations) { text.getInlineContents().filter { false }.orEmpty() }
 
   val animatedText = textToRender.value.animateAlphas(animations.values, contentColor)
 
@@ -144,9 +145,9 @@ private data class TextAnimation(val startIndex: Int, val alpha: Float)
 
 private fun AnnotatedString.animateAlphas(animations: Collection<TextAnimation>, contentColor: Color): AnnotatedString {
   var remainingText = this
+  println("Animating text: $this")
   val modifiedTextSnippets = mutableStateListOf<AnnotatedString>()
   animations.sortedByDescending { it.startIndex }.forEach { animation ->
-    println("Animating from ${animation.startIndex} to ${remainingText.length}")
     if (animation.startIndex < remainingText.length) {
       modifiedTextSnippets.add(
         remainingText.subSequence(animation.startIndex, remainingText.length)
@@ -154,7 +155,7 @@ private fun AnnotatedString.animateAlphas(animations: Collection<TextAnimation>,
       )
       remainingText = remainingText.subSequence(0, animation.startIndex)
     } else {
-      println("Animation index out of bounds: ${animation.startIndex}")
+      println("Animation index out of bounds: ${animation.startIndex} remaining: ${remainingText.text}")
     }
   }
 //  return AnnotatedString.Builder(remainingText).apply {
@@ -167,13 +168,7 @@ private fun AnnotatedString.changeAlpha(alpha: Float, contentColor: Color): Anno
   val newWordsStyles = spanStyles.map { spanstyle ->
     spanstyle.copy(item = spanstyle.item.copy(color = spanstyle.item.color.copy(alpha = alpha)))
   }.ifEmpty {
-    listOf(
-      AnnotatedString.Range(
-        SpanStyle(contentColor.copy(alpha = alpha)),
-        0,
-        length
-      )
-    )
+    listOf(AnnotatedString.Range(SpanStyle(contentColor.copy(alpha = alpha)), 0, length))
   }
   return AnnotatedString(text, newWordsStyles)
 }
