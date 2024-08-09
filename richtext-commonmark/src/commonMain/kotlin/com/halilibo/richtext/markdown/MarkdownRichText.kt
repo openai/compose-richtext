@@ -59,7 +59,9 @@ import com.halilibo.richtext.ui.string.withFormat
 internal fun RichTextScope.MarkdownRichText(
   astNode: AstNode,
   inlineContentOverride: InlineContentOverride?,
-  modifier: Modifier = Modifier
+  markdownRenderOptions: MarkdownRenderOptions,
+  modifier: Modifier = Modifier,
+  animate: Boolean = false,
 ) {
   val onLinkClicked = LocalOnLinkClicked.current
   // Assume that only RichText nodes reside below this level.
@@ -67,7 +69,14 @@ internal fun RichTextScope.MarkdownRichText(
     computeRichTextString(astNode, inlineContentOverride, onLinkClicked)
   }
 
-  Text(text = richText, modifier = modifier, isLeafText = astNode.links.next == null)
+  Text(
+    text = richText,
+    modifier = modifier,
+    isLeafText = astNode.links.next == null,
+    animate = markdownRenderOptions.animate,
+    textFadeInMs = markdownRenderOptions.textFadeInMs,
+    debounceMs = markdownRenderOptions.debounceMs,
+  )
 }
 
 private fun RichTextScope.computeRichTextString(

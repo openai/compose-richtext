@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import com.halilibo.richtext.markdown.Markdown
 import com.halilibo.richtext.markdown.MarkdownParseOptions
+import com.halilibo.richtext.markdown.MarkdownRenderOptions
 import com.halilibo.richtext.ui.RichTextStyle
 import com.halilibo.richtext.ui.material.RichText
 import com.halilibo.richtext.ui.resolveDefaults
@@ -49,7 +50,7 @@ import kotlin.random.Random
   var isWordWrapEnabled by remember { mutableStateOf(true) }
   var markdownParseOptions by remember { mutableStateOf(MarkdownParseOptions.Default) }
   var isAutolinkEnabled by remember { mutableStateOf(true) }
-  var restartAnimation by remember { mutableStateOf(1) }
+  var streamingText by remember { mutableStateOf(true) }
 
   LaunchedEffect(isWordWrapEnabled) {
     richTextStyle = richTextStyle.copy(
@@ -75,32 +76,32 @@ import kotlin.random.Random
           Column {
             CheckboxPreference(
               onClick = {
-                restartAnimation += 1
+                streamingText = !streamingText
               },
-              checked = restartAnimation % 2 == 1,
-              label = "Restart"
+              checked = streamingText,
+              label = "Stream text"
             )
 
-//            CheckboxPreference(
-//              onClick = {
-//                isWordWrapEnabled = !isWordWrapEnabled
-//              },
-//              checked = isWordWrapEnabled,
-//              label = "Word Wrap"
-//            )
-//
-//            CheckboxPreference(
-//              onClick = {
-//                isAutolinkEnabled = !isAutolinkEnabled
-//              },
-//              checked = isAutolinkEnabled,
-//              label = "Autolink"
-//            )
+            CheckboxPreference(
+              onClick = {
+                isWordWrapEnabled = !isWordWrapEnabled
+              },
+              checked = isWordWrapEnabled,
+              label = "Word Wrap"
+            )
 
-//            RichTextStyleConfig(
-//              richTextStyle = richTextStyle,
-//              onChanged = { richTextStyle = it }
-//            )
+            CheckboxPreference(
+              onClick = {
+                isAutolinkEnabled = !isAutolinkEnabled
+              },
+              checked = isAutolinkEnabled,
+              label = "Autolink"
+            )
+
+            RichTextStyleConfig(
+              richTextStyle = richTextStyle,
+              onChanged = { richTextStyle = it }
+            )
           }
         }
 
@@ -113,24 +114,32 @@ import kotlin.random.Random
               ) {
                 var textLength by remember { mutableStateOf(0) }
 
-                LaunchedEffect(restartAnimation) {
-                  val totalDuration = 400000L // 30 seconds
-                  val random = Random(System.currentTimeMillis())
-                  var currentIndex = 0
+                LaunchedEffect(streamingText) {
+                  if (streamingText) {
+                    val totalDuration = 400000L // 30 seconds
+                    val random = Random(System.currentTimeMillis())
+                    var currentIndex = 0
 
-                  while (currentIndex < sampleMarkdown.length) {
-                    val randomChars = random.nextInt(1, 41)
-                    currentIndex += randomChars
-                    textLength = minOf(currentIndex, sampleMarkdown.length)
+                    while (currentIndex < sampleMarkdown.length) {
+                      val randomChars = random.nextInt(1, 41)
+                      currentIndex += randomChars
+                      textLength = minOf(currentIndex, sampleMarkdown.length)
 
-                    val delayPerChar = totalDuration / sampleMarkdown.length
-                    delay(random.nextLong(1, 161))
+                      delay(random.nextLong(1, 161))
+                    }
+                  } else {
+                    textLength = sampleMarkdown.length
                   }
                 }
 
                 Markdown(
                   content = sampleMarkdown.take(textLength),
                   markdownParseOptions = markdownParseOptions,
+                  markdownRenderOptions = MarkdownRenderOptions(
+                    animate = true,
+                    textFadeInMs = 600,
+                    debounceMs = 150
+                  ),
                   onLinkClicked = {
                     Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
                   }
