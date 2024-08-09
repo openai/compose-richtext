@@ -8,7 +8,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.invalidateGroupsWithKey
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -51,52 +53,41 @@ public fun RichTextScope.Text(
     val resolvedStyle = (style ?: RichTextStringStyle.Default).resolveDefaults()
     text.toAnnotatedString(resolvedStyle, contentColor)
   }
-  val textSlices = remember { mutableStateOf(mutableListOf(AnnotatedString("") to true)) }
-  val renderedText = remember { mutableStateOf(annotated) }
+  val animations = remember { mutableStateMapOf<Int, TextAnimation>() }
+  val textToRender = remember { mutableStateOf(AnnotatedString("")) }
 
   if (animate) {
-    val textToRender = remember { mutableStateOf(annotated) }
+    val lastAnimatedIndex = remember { mutableIntStateOf(0) }
     val debouncedTextFlow = remember { MutableStateFlow(annotated) }
-    val debouncedText by remember { debouncedTextFlow.sample(150.milliseconds) }
-        .collectAsState(AnnotatedString(""), coroutineScope.coroutineContext)
+    val readyToAnimateText = remember { mutableStateOf(AnnotatedString("")) }
+    val debouncedText by remember { debouncedTextFlow.debounce(150.milliseconds) }
+      .collectAsState(AnnotatedString(""), coroutineScope.coroutineContext)
 
     LaunchedEffect(text) {
       debouncedTextFlow.value = annotated
     }
     LaunchedEffect(debouncedText) {
-      textToRender.value = debouncedText
+      readyToAnimateText.value = debouncedText
+    }
+    if (annotated.hasNewPhraseFrom(textToRender.value.text)) {
+      readyToAnimateText.value = annotated
     }
 
-    val animatedText = remember { mutableStateOf(annotated.text) }
-//    if (annotated.hasNewPhraseFrom(textToRender.value.text)) {
-//      textToRender.value = annotated
-//    }
-
-    LaunchedEffect(textToRender.value) {
-      if (textToRender.value.text.startsWith(animatedText.value)) {
-        val newWords =
-          textToRender.value.subSequence(animatedText.value.length, textToRender.value.length)
-        if (newWords.isEmpty()) {
-          println("No new words")
-          return@LaunchedEffect
-        }
-        val sliceIndex = textSlices.value.size
+    LaunchedEffect(readyToAnimateText.value) {
+      if (readyToAnimateText.value.text.length >= lastAnimatedIndex.value) {
+        val animationIndex = lastAnimatedIndex.value
+        lastAnimatedIndex.value = textToRender.value.text.length
         //println("index: $sliceIndex newWords: ${newWords} current words: ${animatedText.value}")
-        animatedText.value = textToRender.value.text
-        textSlices.value.add(newWords.changeAlpha(0f, contentColor) to true)
+        animations[animationIndex] = TextAnimation(animationIndex, 0f)
         coroutineScope.launch {
+          textToRender.value = readyToAnimateText.value
           Animatable(0f).animateTo(
             targetValue = 1f,
             animationSpec = tween(durationMillis = 1000)
           ) {
-            if (textSlices.value[sliceIndex].second) {
-              textSlices.value[sliceIndex] = newWords.changeAlpha(value, contentColor) to true
-            }
+            animations[animationIndex] = TextAnimation(animationIndex, value)
           }
-          println("finished rendering index: $sliceIndex newWords: ${newWords} and now ${textToRender.value}")
-
-          textSlices.value[sliceIndex] = newWords to false
-          renderedText.value = textToRender.value
+          animations.remove(animationIndex)
         }
       } else {
 //        println("Text has changed. nuking")
@@ -109,19 +100,13 @@ public fun RichTextScope.Text(
 //        }
       }
     }
+  } else {
+    textToRender.value = annotated
   }
 
   val inlineContents = remember(text) { text.getInlineContents() }
 
-  val combinedText = renderedText.value + textSlices.value.toList()
-    .filter { it.second }
-    .map { it.first }
-    .ifEmpty { listOf(AnnotatedString("")) }
-    .reduce { acc, annotatedString -> acc + annotatedString }
-
-  LaunchedEffect(combinedText.text) {
-    println("Text: ${combinedText.text}")
-  }
+  val animatedText = textToRender.value.animateAlphas(animations.values, contentColor)
 
   BoxWithConstraints(modifier = modifier) {
     val inlineTextContents = manageInlineTextContents(
@@ -130,7 +115,7 @@ public fun RichTextScope.Text(
     )
 
     ClickableText(
-      text = combinedText,
+      text = animatedText,
       onTextLayout = onTextLayout,
       inlineContent = inlineTextContents,
       softWrap = softWrap,
@@ -153,6 +138,29 @@ public fun RichTextScope.Text(
       }
     )
   }
+}
+
+private data class TextAnimation(val startIndex: Int, val alpha: Float)
+
+private fun AnnotatedString.animateAlphas(animations: Collection<TextAnimation>, contentColor: Color): AnnotatedString {
+  var remainingText = this
+  val modifiedTextSnippets = mutableStateListOf<AnnotatedString>()
+  animations.sortedByDescending { it.startIndex }.forEach { animation ->
+    println("Animating from ${animation.startIndex} to ${remainingText.length}")
+    if (animation.startIndex < remainingText.length) {
+      modifiedTextSnippets.add(
+        remainingText.subSequence(animation.startIndex, remainingText.length)
+          .changeAlpha(animation.alpha, contentColor)
+      )
+      remainingText = remainingText.subSequence(0, animation.startIndex)
+    } else {
+      println("Animation index out of bounds: ${animation.startIndex}")
+    }
+  }
+//  return AnnotatedString.Builder(remainingText).apply {
+//      modifiedTextSnippets.forEach { append(it) }
+//    }.toAnnotatedString()
+  return modifiedTextSnippets.reversed().fold(remainingText) { acc, snippet -> acc + snippet }
 }
 
 private fun AnnotatedString.changeAlpha(alpha: Float, contentColor: Color): AnnotatedString {
