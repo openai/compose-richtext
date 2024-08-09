@@ -26,6 +26,7 @@ import com.halilibo.richtext.ui.RichTextScope
 import com.halilibo.richtext.ui.currentContentColor
 import com.halilibo.richtext.ui.currentRichTextStyle
 import com.halilibo.richtext.ui.string.RichTextString.Format
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.sample
@@ -37,13 +38,17 @@ import kotlin.time.Duration.Companion.milliseconds
  *
  * @sample com.halilibo.richtext.ui.previews.TextPreview
  */
+@OptIn(FlowPreview::class)
 @Composable
 public fun RichTextScope.Text(
   text: RichTextString,
   modifier: Modifier = Modifier,
   onTextLayout: (TextLayoutResult) -> Unit = {},
   softWrap: Boolean = true,
-  animate: Boolean = true,
+  isLeafText: Boolean = true,
+  animate: Boolean = false,
+  textFadeInMs: Int = 600,
+  debounceMs: Int = 150,
   overflow: TextOverflow = TextOverflow.Clip,
   maxLines: Int = Int.MAX_VALUE
 ) {
@@ -59,26 +64,33 @@ public fun RichTextScope.Text(
 
   if (animate) {
     val lastAnimatedIndex = remember { mutableIntStateOf(0) }
-    val debouncedTextFlow = remember { MutableStateFlow(AnnotatedString("")) }
     val readyToAnimateText = remember { mutableStateOf(AnnotatedString("")) }
-    val debouncedText by remember { debouncedTextFlow.debounce(250.milliseconds) }
+    // In case no changes happen for a while, we'll render after some timeout
+    val debouncedTextFlow = remember { MutableStateFlow(AnnotatedString("")) }
+    val debouncedText by remember { debouncedTextFlow.debounce(debounceMs.milliseconds) }
       .collectAsState(AnnotatedString(""), coroutineScope.coroutineContext)
 
     LaunchedEffect(text) {
       debouncedTextFlow.value = annotated
+      // If we detect a new phrase, kick off the animation now.
       if (annotated.hasNewPhraseFrom(textToRender.value.text)) {
+        readyToAnimateText.value = annotated
+       }
+    }
+    LaunchedEffect(isLeafText) {
+      if (!isLeafText) {
         readyToAnimateText.value = annotated
       }
     }
-//    LaunchedEffect(Unit) {
-//      textToRender.value = annotated
-//    }
     LaunchedEffect(debouncedText) {
-      readyToAnimateText.value = debouncedText
+      if (debouncedText.text.isNotEmpty()) {
+        readyToAnimateText.value = debouncedText
+      }
     }
 
     LaunchedEffect(readyToAnimateText.value) {
       if (readyToAnimateText.value.text.length >= lastAnimatedIndex.value) {
+        // TODO: split this into phrases.
         val animationIndex = lastAnimatedIndex.value
         lastAnimatedIndex.value = readyToAnimateText.value.text.length
         animations[animationIndex] = TextAnimation(animationIndex, 0f)
@@ -86,7 +98,7 @@ public fun RichTextScope.Text(
           textToRender.value = readyToAnimateText.value
           Animatable(0f).animateTo(
             targetValue = 1f,
-            animationSpec = tween(durationMillis = 1000)
+            animationSpec = tween(durationMillis = textFadeInMs)
           ) {
             animations[animationIndex] = TextAnimation(animationIndex, value)
           }
@@ -94,27 +106,21 @@ public fun RichTextScope.Text(
         }
       } else {
         textToRender.value = readyToAnimateText.value
-//        println("Text has changed. nuking")
-//        println("Was: ${animatedText.value}")
-//        println("Now: ${textToRender.value.text}")
-//        animatedText.value = textToRender.value.text
-//        renderedText.value = textToRender.value
-//        for (i in textSlices.indices) {
-//          textSlices[i] = textSlices[i].first to false
-//        }
       }
     }
   } else {
+    // If we're not animating, just render the text as is.
     textToRender.value = annotated
   }
 
-  val inlineContents = remember(animations) { text.getInlineContents().filter { false } }
+  val inlineContents = remember(text) { text.getInlineContents() }
 
-  if (textToRender.value.length != annotated.length) {
-    println("Not yet synced. lengths: ${textToRender.value.length} ${annotated.length}")
+  // Ignore animated text if we have inline content, since it causes crashes.
+  val animatedText = if (inlineContents.isEmpty()) {
+    textToRender.value.animateAlphas(animations.values, contentColor)
+  } else {
+    annotated
   }
-
-  val animatedText = textToRender.value.animateAlphas(animations.values, contentColor)
 
   BoxWithConstraints(modifier = modifier) {
     val inlineTextContents = manageInlineTextContents(
@@ -151,8 +157,10 @@ public fun RichTextScope.Text(
 private data class TextAnimation(val startIndex: Int, val alpha: Float)
 
 private fun AnnotatedString.animateAlphas(animations: Collection<TextAnimation>, contentColor: Color): AnnotatedString {
+  if (this.text.isEmpty() || animations.isEmpty()) {
+    return this
+  }
   var remainingText = this
-  println("Animating text: ${this.length}")
   val modifiedTextSnippets = mutableStateListOf<AnnotatedString>()
   animations.sortedByDescending { it.startIndex }.forEach { animation ->
     if (animation.startIndex < remainingText.length) {
@@ -162,13 +170,12 @@ private fun AnnotatedString.animateAlphas(animations: Collection<TextAnimation>,
       )
       remainingText = remainingText.subSequence(0, animation.startIndex)
     } else {
-      println("Animation index out of bounds: ${animation.startIndex} remaining: ${remainingText.text.length}")
     }
   }
-//  return AnnotatedString.Builder(remainingText).apply {
-//      modifiedTextSnippets.forEach { append(it) }
-//    }.toAnnotatedString()
-  return modifiedTextSnippets.reversed().fold(remainingText) { acc, snippet -> acc + snippet }
+  return AnnotatedString.Builder(remainingText).apply {
+    modifiedTextSnippets.reversed().forEach { append(it) }
+  }.toAnnotatedString()
+//  return modifiedTextSnippets.reversed().fold(remainingText) { acc, snippet -> acc + snippet }
 }
 
 private fun AnnotatedString.changeAlpha(alpha: Float, contentColor: Color): AnnotatedString {
@@ -178,6 +185,31 @@ private fun AnnotatedString.changeAlpha(alpha: Float, contentColor: Color): Anno
     listOf(AnnotatedString.Range(SpanStyle(contentColor.copy(alpha = alpha)), 0, length))
   }
   return AnnotatedString(text, newWordsStyles)
+}
+
+// Given a string, finds all the "phrases" (sentences, commas, and any word sequences longer than 5 words)
+// and returns a list of all their starting indexes
+private fun AnnotatedString.findPhrases(): List<Int> {
+  val phrases = mutableListOf<Int>()
+  var lastPhraseStart = 0
+  var wordCount = 0
+  forEachIndexed { index, char ->
+    if (char == '.' || char == ',') {
+      if (index - lastPhraseStart > 5) {
+        phrases.add(lastPhraseStart)
+        wordCount = 0
+      }
+      lastPhraseStart = index + 1
+    }
+    if (char == ' ') {
+      wordCount++
+      if (wordCount > 5 && index - lastPhraseStart > 10) {
+        phrases.add(lastPhraseStart)
+        wordCount = 0
+      }
+    }
+  }
+  return phrases
 }
 
 private fun AnnotatedString.hasNewPhraseFrom(rendered: String): Boolean {

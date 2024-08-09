@@ -67,7 +67,7 @@ internal fun RichTextScope.MarkdownRichText(
     computeRichTextString(astNode, inlineContentOverride, onLinkClicked)
   }
 
-  Text(text = richText, modifier = modifier)
+  Text(text = richText, modifier = modifier, isLeafText = astNode.links.next == null)
 }
 
 private fun RichTextScope.computeRichTextString(
