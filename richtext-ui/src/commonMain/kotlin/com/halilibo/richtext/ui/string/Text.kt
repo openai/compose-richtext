@@ -1,36 +1,33 @@
 package com.halilibo.richtext.ui.string
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.invalidateGroupsWithKey
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Color.Companion
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.halilibo.richtext.ui.ClickableText
 import com.halilibo.richtext.ui.RichTextScope
 import com.halilibo.richtext.ui.currentContentColor
 import com.halilibo.richtext.ui.currentRichTextStyle
 import com.halilibo.richtext.ui.string.RichTextString.Format
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
-import java.io.Console
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 
 /**
  * Renders a [RichTextString] as created with [richTextString].
@@ -43,58 +40,88 @@ public fun RichTextScope.Text(
   modifier: Modifier = Modifier,
   onTextLayout: (TextLayoutResult) -> Unit = {},
   softWrap: Boolean = true,
+  animate: Boolean = true,
   overflow: TextOverflow = TextOverflow.Clip,
   maxLines: Int = Int.MAX_VALUE
 ) {
   val style = currentRichTextStyle.stringStyle
   val contentColor = currentContentColor
+  val coroutineScope = rememberCoroutineScope()
   val annotated = remember(text, style, contentColor) {
     val resolvedStyle = (style ?: RichTextStringStyle.Default).resolveDefaults()
     text.toAnnotatedString(resolvedStyle, contentColor)
   }
+  val textSlices = remember { mutableStateOf(mutableListOf(AnnotatedString("") to true)) }
+  val renderedText = remember { mutableStateOf(annotated) }
 
-  val rendered = remember { mutableStateOf("") }
-  val debouncedTextFlow = remember { MutableStateFlow(AnnotatedString("")) }
-  val coroutineScope = rememberCoroutineScope()
-  val debouncedText by remember { debouncedTextFlow.sample(300.milliseconds) }
-    .collectAsState(AnnotatedString(""), coroutineScope.coroutineContext)
+  if (animate) {
+    val textToRender = remember { mutableStateOf(annotated) }
+    val debouncedTextFlow = remember { MutableStateFlow(annotated) }
+    val debouncedText by remember { debouncedTextFlow.sample(150.milliseconds) }
+        .collectAsState(AnnotatedString(""), coroutineScope.coroutineContext)
 
-  LaunchedEffect(text) {
-    debouncedTextFlow.value = annotated
-  }
+    LaunchedEffect(text) {
+      debouncedTextFlow.value = annotated
+    }
+    LaunchedEffect(debouncedText) {
+      textToRender.value = debouncedText
+    }
 
-  val textSlices = remember { mutableStateListOf(AnnotatedString("")) }
-  LaunchedEffect(debouncedText) {
-    // log the state
-    if (debouncedText.length > rendered.value.length) {
-      val newWords = debouncedText.subSequence(rendered.value.length, debouncedText.length)
-      rendered.value += newWords.text
-      val sliceIndex = textSlices.size
-      textSlices.add(newWords)
-      coroutineScope.launch {
-        Animatable(0f).animateTo(
-          targetValue = 1f,
-          animationSpec = tween(durationMillis = 1000)
-        ) {
-          val newWordsStyles = newWords.spanStyles.map { spanstyle ->
-            spanstyle.copy(item = spanstyle.item.copy(color = spanstyle.item.color.copy(alpha = value)))
-          }.ifEmpty {
-            listOf(
-              AnnotatedString.Range(
-                SpanStyle(contentColor.copy(alpha = value)),
-                0,
-                newWords.length
-              )
-            )
-          }
-          val animatedNewWords = AnnotatedString(newWords.text, newWordsStyles)
-          textSlices[sliceIndex] = animatedNewWords
+    val animatedText = remember { mutableStateOf(annotated.text) }
+//    if (annotated.hasNewPhraseFrom(textToRender.value.text)) {
+//      textToRender.value = annotated
+//    }
+
+    LaunchedEffect(textToRender.value) {
+      if (textToRender.value.text.startsWith(animatedText.value)) {
+        val newWords =
+          textToRender.value.subSequence(animatedText.value.length, textToRender.value.length)
+        if (newWords.isEmpty()) {
+          println("No new words")
+          return@LaunchedEffect
         }
+        val sliceIndex = textSlices.value.size
+        //println("index: $sliceIndex newWords: ${newWords} current words: ${animatedText.value}")
+        animatedText.value = textToRender.value.text
+        textSlices.value.add(newWords.changeAlpha(0f, contentColor) to true)
+        coroutineScope.launch {
+          Animatable(0f).animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = 1000)
+          ) {
+            if (textSlices.value[sliceIndex].second) {
+              textSlices.value[sliceIndex] = newWords.changeAlpha(value, contentColor) to true
+            }
+          }
+          println("finished rendering index: $sliceIndex newWords: ${newWords} and now ${textToRender.value}")
+
+          textSlices.value[sliceIndex] = newWords to false
+          renderedText.value = textToRender.value
+        }
+      } else {
+//        println("Text has changed. nuking")
+//        println("Was: ${animatedText.value}")
+//        println("Now: ${textToRender.value.text}")
+//        animatedText.value = textToRender.value.text
+//        renderedText.value = textToRender.value
+//        for (i in textSlices.indices) {
+//          textSlices[i] = textSlices[i].first to false
+//        }
       }
     }
   }
 
   val inlineContents = remember(text) { text.getInlineContents() }
+
+  val combinedText = renderedText.value + textSlices.value.toList()
+    .filter { it.second }
+    .map { it.first }
+    .ifEmpty { listOf(AnnotatedString("")) }
+    .reduce { acc, annotatedString -> acc + annotatedString }
+
+  LaunchedEffect(combinedText.text) {
+    println("Text: ${combinedText.text}")
+  }
 
   BoxWithConstraints(modifier = modifier) {
     val inlineTextContents = manageInlineTextContents(
@@ -103,7 +130,7 @@ public fun RichTextScope.Text(
     )
 
     ClickableText(
-      text = textSlices.toList().reduce { acc, annotatedString -> acc + annotatedString },
+      text = combinedText,
       onTextLayout = onTextLayout,
       inlineContent = inlineTextContents,
       softWrap = softWrap,
@@ -126,6 +153,34 @@ public fun RichTextScope.Text(
       }
     )
   }
+}
+
+private fun AnnotatedString.changeAlpha(alpha: Float, contentColor: Color): AnnotatedString {
+  val newWordsStyles = spanStyles.map { spanstyle ->
+    spanstyle.copy(item = spanstyle.item.copy(color = spanstyle.item.color.copy(alpha = alpha)))
+  }.ifEmpty {
+    listOf(
+      AnnotatedString.Range(
+        SpanStyle(contentColor.copy(alpha = alpha)),
+        0,
+        length
+      )
+    )
+  }
+  return AnnotatedString(text, newWordsStyles)
+}
+
+private fun AnnotatedString.hasNewPhraseFrom(rendered: String): Boolean {
+  if (rendered.count { it == ',' } != this.count { it == ',' }) {
+    return true
+  }
+  if (rendered.count { it == '.' } != this.count { it == '.' }) {
+    return true
+  }
+  if (this.count { it == ' ' } - rendered.count { it == ' ' } > 4) {
+    return true
+  }
+  return false
 }
 
 private fun AnnotatedString.getConsumableAnnotations(textFormatObjects: Map<String, Any>, offset: Int): Sequence<Format.Link> =
