@@ -116,7 +116,6 @@ import kotlin.random.Random
 
                 LaunchedEffect(streamingText) {
                   if (streamingText) {
-                    val totalDuration = 400000L // 30 seconds
                     val random = Random(System.currentTimeMillis())
                     var currentIndex = 0
 

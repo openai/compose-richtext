@@ -26,6 +26,7 @@ import com.halilibo.richtext.ui.RichTextScope
 import com.halilibo.richtext.ui.currentContentColor
 import com.halilibo.richtext.ui.currentRichTextStyle
 import com.halilibo.richtext.ui.string.RichTextString.Format
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.debounce
@@ -54,14 +55,67 @@ public fun RichTextScope.Text(
 ) {
   val style = currentRichTextStyle.stringStyle
   val contentColor = currentContentColor
-  val coroutineScope = rememberCoroutineScope()
   val annotated = remember(text, style, contentColor) {
     val resolvedStyle = (style ?: RichTextStringStyle.Default).resolveDefaults()
     text.toAnnotatedString(resolvedStyle, contentColor)
   }
+  val inlineContents = remember(text) { text.getInlineContents() }
+
+  val animatedText = rememberAnimatedText(
+    animate = animate,
+    annotated = annotated,
+    contentColor = contentColor,
+    debounceMs = debounceMs,
+    textFadeInMs = textFadeInMs,
+    isLeafText = isLeafText,
+    hasInlineTextContent = inlineContents.isNotEmpty(),
+  )
+
+  BoxWithConstraints(modifier = modifier) {
+    val inlineTextContents = manageInlineTextContents(
+      inlineContents = inlineContents,
+      textConstraints = constraints,
+    )
+
+    ClickableText(
+      text = animatedText,
+      onTextLayout = onTextLayout,
+      inlineContent = inlineTextContents,
+      softWrap = softWrap,
+      overflow = overflow,
+      maxLines = maxLines,
+      isOffsetClickable = { offset ->
+        // When you click past the end of the string, the offset is where the caret should be
+        // placed. However, when it is at the end, offset == text.length but parent links will at
+        // most end at length - 1. So we need to coerce the offset to be at most length - 1.
+        // This fixes an image where only the left side of an image wrapped with a link was only
+        // clickable on the left side.
+        // However, if a paragraph ends with a link, the link will be clickable past the
+        // end of the last line.
+        annotated.getConsumableAnnotations(text.formatObjects, offset.coerceAtMost(annotated.length - 1)).any()
+      },
+      onClick = { offset ->
+        annotated.getConsumableAnnotations(text.formatObjects, offset.coerceAtMost(annotated.length - 1))
+          .firstOrNull()
+          ?.let { link -> link.onClick() }
+      }
+    )
+  }
+}
+
+@Composable
+private fun rememberAnimatedText(
+  animate: Boolean,
+  annotated: AnnotatedString,
+  contentColor: Color,
+  debounceMs: Int,
+  textFadeInMs: Int,
+  isLeafText: Boolean,
+  hasInlineTextContent: Boolean,
+): AnnotatedString {
+  val coroutineScope = rememberCoroutineScope()
   val animations = remember { mutableStateMapOf<Int, TextAnimation>() }
   val textToRender = remember { mutableStateOf(AnnotatedString("")) }
-
   if (animate) {
     val lastAnimatedIndex = remember { mutableIntStateOf(0) }
     val readyToAnimateText = remember { mutableStateOf(AnnotatedString("")) }
@@ -70,14 +124,14 @@ public fun RichTextScope.Text(
     val debouncedText by remember { debouncedTextFlow.debounce(debounceMs.milliseconds) }
       .collectAsState(AnnotatedString(""), coroutineScope.coroutineContext)
 
-    LaunchedEffect(text) {
+    LaunchedEffect(annotated) {
       debouncedTextFlow.value = annotated
       // If we detect a new phrase, kick off the animation now.
       if (annotated.hasNewPhraseFrom(textToRender.value.text)) {
         readyToAnimateText.value = annotated
-       }
+      }
     }
-    LaunchedEffect(isLeafText) {
+    LaunchedEffect(isLeafText, annotated) {
       if (!isLeafText) {
         readyToAnimateText.value = annotated
       }
@@ -113,44 +167,12 @@ public fun RichTextScope.Text(
     textToRender.value = annotated
   }
 
-  val inlineContents = remember(text) { text.getInlineContents() }
 
   // Ignore animated text if we have inline content, since it causes crashes.
-  val animatedText = if (inlineContents.isEmpty()) {
+  return if (!hasInlineTextContent) {
     textToRender.value.animateAlphas(animations.values, contentColor)
   } else {
     annotated
-  }
-
-  BoxWithConstraints(modifier = modifier) {
-    val inlineTextContents = manageInlineTextContents(
-      inlineContents = inlineContents,
-      textConstraints = constraints,
-    )
-
-    ClickableText(
-      text = animatedText,
-      onTextLayout = onTextLayout,
-      inlineContent = inlineTextContents,
-      softWrap = softWrap,
-      overflow = overflow,
-      maxLines = maxLines,
-      isOffsetClickable = { offset ->
-        // When you click past the end of the string, the offset is where the caret should be
-        // placed. However, when it is at the end, offset == text.length but parent links will at
-        // most end at length - 1. So we need to coerce the offset to be at most length - 1.
-        // This fixes an image where only the left side of an image wrapped with a link was only
-        // clickable on the left side.
-        // However, if a paragraph ends with a link, the link will be clickable past the
-        // end of the last line.
-        annotated.getConsumableAnnotations(text.formatObjects, offset.coerceAtMost(annotated.length - 1)).any()
-      },
-      onClick = { offset ->
-        annotated.getConsumableAnnotations(text.formatObjects, offset.coerceAtMost(annotated.length - 1))
-          .firstOrNull()
-          ?.let { link -> link.onClick() }
-      }
-    )
   }
 }
 
@@ -163,19 +185,16 @@ private fun AnnotatedString.animateAlphas(animations: Collection<TextAnimation>,
   var remainingText = this
   val modifiedTextSnippets = mutableStateListOf<AnnotatedString>()
   animations.sortedByDescending { it.startIndex }.forEach { animation ->
-    if (animation.startIndex < remainingText.length) {
-      modifiedTextSnippets.add(
-        remainingText.subSequence(animation.startIndex, remainingText.length)
-          .changeAlpha(animation.alpha, contentColor)
-      )
-      remainingText = remainingText.subSequence(0, animation.startIndex)
-    } else {
-    }
+    if (animation.startIndex >= remainingText.length) return@forEach
+    modifiedTextSnippets.add(
+      remainingText.subSequence(animation.startIndex, remainingText.length)
+        .changeAlpha(animation.alpha, contentColor)
+    )
+    remainingText = remainingText.subSequence(0, animation.startIndex)
   }
   return AnnotatedString.Builder(remainingText).apply {
     modifiedTextSnippets.reversed().forEach { append(it) }
   }.toAnnotatedString()
-//  return modifiedTextSnippets.reversed().fold(remainingText) { acc, snippet -> acc + snippet }
 }
 
 private fun AnnotatedString.changeAlpha(alpha: Float, contentColor: Color): AnnotatedString {
@@ -187,42 +206,13 @@ private fun AnnotatedString.changeAlpha(alpha: Float, contentColor: Color): Anno
   return AnnotatedString(text, newWordsStyles)
 }
 
-// Given a string, finds all the "phrases" (sentences, commas, and any word sequences longer than 5 words)
-// and returns a list of all their starting indexes
-private fun AnnotatedString.findPhrases(): List<Int> {
-  val phrases = mutableListOf<Int>()
-  var lastPhraseStart = 0
-  var wordCount = 0
-  forEachIndexed { index, char ->
-    if (char == '.' || char == ',') {
-      if (index - lastPhraseStart > 5) {
-        phrases.add(lastPhraseStart)
-        wordCount = 0
-      }
-      lastPhraseStart = index + 1
-    }
-    if (char == ' ') {
-      wordCount++
-      if (wordCount > 5 && index - lastPhraseStart > 10) {
-        phrases.add(lastPhraseStart)
-        wordCount = 0
-      }
-    }
-  }
-  return phrases
-}
-
 private fun AnnotatedString.hasNewPhraseFrom(rendered: String): Boolean {
-  if (rendered.count { it == ',' } != this.count { it == ',' }) {
-    return true
+  return when {
+    rendered.count { it == ',' } != this.count { it == ',' } -> true
+    rendered.count { it == '.' } != this.count { it == '.' } -> true
+    this.count { it == ' ' } - rendered.count { it == ' ' } > 4 -> true
+    else -> false
   }
-  if (rendered.count { it == '.' } != this.count { it == '.' }) {
-    return true
-  }
-  if (this.count { it == ' ' } - rendered.count { it == ' ' } > 4) {
-    return true
-  }
-  return false
 }
 
 private fun AnnotatedString.getConsumableAnnotations(textFormatObjects: Map<String, Any>, offset: Int): Sequence<Format.Link> =

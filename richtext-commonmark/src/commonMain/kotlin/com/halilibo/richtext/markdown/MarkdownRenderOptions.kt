@@ -2,7 +2,6 @@ package com.halilibo.richtext.markdown
 
 /**
  * Allows configuration of the Markdown renderer
- *
  */
 public data class MarkdownRenderOptions(
   val animate: Boolean = false,
