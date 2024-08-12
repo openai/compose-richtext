@@ -39,7 +39,6 @@ import kotlin.time.Duration.Companion.milliseconds
  *
  * @sample com.halilibo.richtext.ui.previews.TextPreview
  */
-@OptIn(FlowPreview::class)
 @Composable
 public fun RichTextScope.Text(
   text: RichTextString,
@@ -104,6 +103,7 @@ public fun RichTextScope.Text(
 }
 
 @Composable
+@OptIn(FlowPreview::class)
 private fun rememberAnimatedText(
   animate: Boolean,
   annotated: AnnotatedString,
