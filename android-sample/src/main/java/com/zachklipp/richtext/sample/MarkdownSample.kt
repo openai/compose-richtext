@@ -32,12 +32,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import com.halilibo.richtext.markdown.Markdown
 import com.halilibo.richtext.markdown.MarkdownParseOptions
-import com.halilibo.richtext.markdown.MarkdownRenderOptions
 import com.halilibo.richtext.ui.RichTextStyle
 import com.halilibo.richtext.ui.material.RichText
 import com.halilibo.richtext.ui.resolveDefaults
-import kotlinx.coroutines.delay
-import kotlin.random.Random
 
 @Preview
 @Composable private fun MarkdownSamplePreview() {
@@ -50,7 +47,6 @@ import kotlin.random.Random
   var isWordWrapEnabled by remember { mutableStateOf(true) }
   var markdownParseOptions by remember { mutableStateOf(MarkdownParseOptions.Default) }
   var isAutolinkEnabled by remember { mutableStateOf(true) }
-  var streamingText by remember { mutableStateOf(true) }
 
   LaunchedEffect(isWordWrapEnabled) {
     richTextStyle = richTextStyle.copy(
@@ -61,7 +57,7 @@ import kotlin.random.Random
   }
   LaunchedEffect(isAutolinkEnabled) {
     markdownParseOptions = markdownParseOptions.copy(
-      autolink = false
+      autolink = isAutolinkEnabled
     )
   }
 
@@ -76,10 +72,10 @@ import kotlin.random.Random
           Column {
             CheckboxPreference(
               onClick = {
-                streamingText = !streamingText
+                isDarkModeEnabled = !isDarkModeEnabled
               },
-              checked = streamingText,
-              label = "Stream text"
+              checked = isDarkModeEnabled,
+              label = "Dark Mode"
             )
 
             CheckboxPreference(
@@ -112,33 +108,9 @@ import kotlin.random.Random
                 style = richTextStyle,
                 modifier = Modifier.padding(8.dp),
               ) {
-                var textLength by remember { mutableStateOf(0) }
-
-                LaunchedEffect(streamingText) {
-                  if (streamingText) {
-                    val random = Random(System.currentTimeMillis())
-                    var currentIndex = 0
-
-                    while (currentIndex < sampleMarkdown.length) {
-                      val randomChars = random.nextInt(1, 41)
-                      currentIndex += randomChars
-                      textLength = minOf(currentIndex, sampleMarkdown.length)
-
-                      delay(random.nextLong(1, 161))
-                    }
-                  } else {
-                    textLength = sampleMarkdown.length
-                  }
-                }
-
                 Markdown(
-                  content = sampleMarkdown.take(textLength),
+                  content = sampleMarkdown,
                   markdownParseOptions = markdownParseOptions,
-                  markdownRenderOptions = MarkdownRenderOptions(
-                    animate = true,
-                    textFadeInMs = 600,
-                    debounceMs = 150
-                  ),
                   onLinkClicked = {
                     Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
                   }
@@ -173,61 +145,8 @@ private fun CheckboxPreference(
 
 private val sampleMarkdown = """
   # Demo
-  Based on [cheatsheet](google.com)
+  Based on [this cheatsheet][cheatsheet]
 
-  ---
-
-  ## Links
-
-  blah blah [I'm an inline-style link](https://www.google.com)
-
-  [I'm a relative reference to a repository file](../blob/master/LICENSE) hi hi
-  
-  Autolink option will detect text links like https://www.google.com and turn them into Markdown links automatically.
-
-  [I'm an inline-style link](https://www.google.com) test akjasd 
-
-  [I'm a relative reference to a repository file](../blob/master/LICENSE) ahahaha 
-  
-  blah blah blah [I'm an inline-style link](https://www.google.com)
-
-  [I'm a relative reference to a repository file](../blob/master/LICENSE)
-  
-  [I'm an inline-style link](https://www.google.com)
-
-  [I'm a relative reference to a repository file](../blob/master/LICENSE)
-  
-  [I'm an inline-style link](https://www.google.com)
-
-  [I'm a relative reference to a repository file](../blob/master/LICENSE)
-  
-  [I'm an inline-style link](https://www.google.com)
-
-  [I'm a relative reference to a repository file](../blob/master/LICENSE)
-
-  blah blah [I'm an inline-style link](https://www.google.com)
-
-  [I'm a relative reference to a repository file](../blob/master/LICENSE) hi hi
-  
-  Autolink option will detect text links like https://www.google.com and turn them into Markdown links automatically.
-
-  [I'm an inline-style link](https://www.google.com) test akjasd 
-
-  [I'm a relative reference to a repository file](../blob/master/LICENSE) ahahaha 
-  
-  blah blah blah [I'm an inline-style link](https://www.google.com) [I'm an inline-style link](https://www.google.com) [I'm an inline-style link](https://www.google.com) [I'm an inline-style link](https://www.google.com) [I'm an inline-style link](https://www.google.com)
-
-  ---
-
-  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent tristique velit ac enim fermentum, vitae malesuada purus vulputate. Fusce sed ex sit amet arcu elementum faucibus. Integer sed dolor eu odio vehicula tempor. Vivamus sit amet ligula non ante placerat aliquet. Etiam sagittis tellus in nisi laoreet, ut suscipit felis vestibulum. Nullam efficitur sapien id ante varius, in bibendum mauris dictum. In aenean fringilla orci, a tempor arcu condimentum at. Aliquam malesuada sem nec nulla scelerisque dapibus. Proin ac orci non erat pharetra tincidunt et et purus. Mauris consectetur mi vitae ex pharetra, in vulputate urna ultricies. Vivamus quis mauris eget quam euismod cursus.
-
-  Aenean facilisis, erat a hendrerit luctus, justo arcu dictum turpis, a malesuada nisi nisl non dolor. Quisque vitae leo ac ligula dapibus vestibulum. Suspendisse potenti. Etiam euismod arcu in justo aliquet, quis malesuada arcu cursus. Ut aliquet, ex vel posuere venenatis, magna lorem cursus risus, ut elementum augue enim vel augue. Fusce scelerisque, dolor sit amet tincidunt elementum, justo leo porttitor lacus, et ultricies elit sem ac nisl. In hac habitasse platea dictumst. Sed faucibus nisl in urna luctus, vel luctus leo facilisis. Cras tempus, eros in dictum consectetur, turpis leo efficitur nulla, at gravida metus risus nec lacus. Morbi tincidunt urna non magna malesuada, at efficitur felis aliquet.
-
-  
-  1 2 3 4 5 6 7 8 9 10 11,   
-
-  12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221
-  
   ---
 
   ## Headers
@@ -238,6 +157,25 @@ private val sampleMarkdown = """
   #### Header 4
   ##### Header 5
   ###### Header 6
+  ---
+  
+  ## Full-bleed Image
+  ![](https://upload.wikimedia.org/wikipedia/commons/thumb/b/b6/Image_created_with_a_mobile_phone.png/1920px-Image_created_with_a_mobile_phone.png)
+
+  ## Images smaller than the width should center
+  ![](https://cdn.nostr.build/p/4a84.png)
+  
+  On LineHeight bug, the image below goes over this text. 
+  ![](https://cdn.nostr.build/p/PxZ0.jpg)
+
+  ## Emphasis
+
+  Emphasis, aka italics, with *asterisks* or _underscores_.
+
+  Strong emphasis, aka bold, with **asterisks** or __underscores__.
+
+  Combined emphasis with **asterisks and _underscores_**.
+
   ---
 
   ## Lists
@@ -257,25 +195,6 @@ private val sampleMarkdown = """
   * Unordered list can use asterisks
   - Or minuses
   + Or pluses
-
-  ---
-    
-  ## Full-bleed Image
-  ![](https://upload.wikimedia.org/wikipedia/commons/thumb/b/b6/Image_created_with_a_mobile_phone.png/1920px-Image_created_with_a_mobile_phone.png)
-
-  ## Images smaller than the width should center
-  ![](https://cdn.nostr.build/p/4a84.png)
-  
-  On LineHeight bug, the image below goes over this text. 
-  ![](https://cdn.nostr.build/p/PxZ0.jpg)
-
-  ## Emphasis
-
-  Emphasis, aka italics, with *asterisks* or _underscores_.
-
-  Strong emphasis, aka bold, with **asterisks** or __underscores__.
-
-  Combined emphasis with **asterisks and _underscores_**.
 
   ---
 
@@ -457,9 +376,4 @@ private val sampleMarkdown = """
   [arbitrary case-insensitive reference text]: https://www.mozilla.org
   [1]: http://slashdot.org
   [link text itself]: http://www.reddit.com
-  
-  
-  
----
-
 """.trimIndent()
