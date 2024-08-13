@@ -24,10 +24,14 @@ import com.halilibo.richtext.ui.RichTextScope
 import com.halilibo.richtext.ui.currentContentColor
 import com.halilibo.richtext.ui.currentRichTextStyle
 import com.halilibo.richtext.ui.string.RichTextString.Format
+import com.halilibo.richtext.ui.util.PhraseAnnotatedString
+import com.halilibo.richtext.ui.util.segmentIntoPhrases
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
+import java.text.BreakIterator
+import java.util.Locale
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
@@ -43,8 +47,8 @@ public fun RichTextScope.Text(
   softWrap: Boolean = true,
   isLeafText: Boolean = true,
   animate: Boolean = false,
-  textFadeInMs: Int = 600,
-  debounceMs: Int = 150,
+  textFadeInMs: Int = 1000,
+  debounceMs: Int = 200,
   overflow: TextOverflow = TextOverflow.Clip,
   maxLines: Int = Int.MAX_VALUE
 ) {
@@ -113,8 +117,8 @@ private fun rememberAnimatedText(
   val animations = remember { mutableStateMapOf<Int, TextAnimation>() }
   val textToRender = remember { mutableStateOf(AnnotatedString("")) }
   if (animate) {
-    val lastAnimatedIndex = remember { mutableIntStateOf(0) }
-    val readyToAnimateText = remember { mutableStateOf(AnnotatedString("")) }
+    val lastAnimationIndex = remember { mutableIntStateOf(-1) }
+    val readyToAnimateText = remember { mutableStateOf(PhraseAnnotatedString()) }
     // In case no changes happen for a while, we'll render after some timeout
     val debouncedTextFlow = remember { MutableStateFlow(AnnotatedString("")) }
     val debouncedText by remember { debouncedTextFlow.debounce(debounceMs.milliseconds) }
@@ -123,40 +127,42 @@ private fun rememberAnimatedText(
     LaunchedEffect(annotated) {
       debouncedTextFlow.value = annotated
       // If we detect a new phrase, kick off the animation now.
-      if (annotated.hasNewPhraseFrom(textToRender.value.text)) {
-        readyToAnimateText.value = annotated
+      val phrases = annotated.segmentIntoPhrases()
+      if (phrases.hasNewPhrasesFrom(readyToAnimateText.value)) {
+        readyToAnimateText.value = phrases
       }
     }
     LaunchedEffect(isLeafText, annotated) {
       if (!isLeafText) {
-        readyToAnimateText.value = annotated
+        readyToAnimateText.value = annotated.segmentIntoPhrases()
       }
     }
     LaunchedEffect(debouncedText) {
       if (debouncedText.text.isNotEmpty()) {
-        readyToAnimateText.value = debouncedText
+        //readyToAnimateText.value = debouncedText.segmentIntoPhrases()
       }
     }
 
     LaunchedEffect(readyToAnimateText.value) {
-      if (readyToAnimateText.value.text.length >= lastAnimatedIndex.value) {
-        // TODO: split this into phrases.
-        val animationIndex = lastAnimatedIndex.value
-        lastAnimatedIndex.value = readyToAnimateText.value.text.length
-        animations[animationIndex] = TextAnimation(animationIndex, 0f)
-        coroutineScope.launch {
-          textToRender.value = readyToAnimateText.value
-          Animatable(0f).animateTo(
-            targetValue = 1f,
-            animationSpec = tween(durationMillis = textFadeInMs)
-          ) {
-            animations[animationIndex] = TextAnimation(animationIndex, value)
+      val phrases = readyToAnimateText.value
+      phrases.phraseSegments
+        .filter { it > lastAnimationIndex.value && it != phrases.phraseSegments.lastOrNull() }
+        .forEachIndexed { index, phraseIndex ->
+//          println("Launching animation $index. current text: ${readyToAnimateText.value.annotatedString.text}")
+          animations[phraseIndex] = TextAnimation(phraseIndex, 0f)
+          lastAnimationIndex.value = phraseIndex
+          coroutineScope.launch {
+            textToRender.value = readyToAnimateText.value.makeCompletePhraseString(!isLeafText)
+//            println("animation index: ${phraseIndex} Phrases: ${phrases.phraseSegments}, lastAnimationIndex: ${lastAnimationIndex.value} animated text: ${textToRender.value.text.substring(phraseIndex, textToRender.value.text.length)}")
+            Animatable(0f).animateTo(
+              targetValue = 1f,
+              animationSpec = tween(durationMillis = textFadeInMs, delayMillis = animations.delayInMillis())
+            ) {
+              animations[phraseIndex] = TextAnimation(phraseIndex, value)
+            }
+            animations.remove(phraseIndex)
           }
-          animations.remove(animationIndex)
         }
-      } else {
-        textToRender.value = readyToAnimateText.value
-      }
     }
   } else {
     // If we're not animating, just render the text as is.
@@ -170,6 +176,10 @@ private fun rememberAnimatedText(
   } else {
     annotated
   }
+}
+
+private fun Map<Int, TextAnimation>.delayInMillis(): Int {
+  return size * 200
 }
 
 private data class TextAnimation(val startIndex: Int, val alpha: Float)
@@ -202,14 +212,6 @@ private fun AnnotatedString.changeAlpha(alpha: Float, contentColor: Color): Anno
   return AnnotatedString(text, newWordsStyles)
 }
 
-private fun AnnotatedString.hasNewPhraseFrom(rendered: String): Boolean {
-  return when {
-    rendered.count { it == ',' } != this.count { it == ',' } -> true
-    rendered.count { it == '.' } != this.count { it == '.' } -> true
-    this.count { it == ' ' } - rendered.count { it == ' ' } > 4 -> true
-    else -> false
-  }
-}
 
 private fun AnnotatedString.getConsumableAnnotations(textFormatObjects: Map<String, Any>, offset: Int): Sequence<Format.Link> =
   getStringAnnotations(Format.FormatAnnotationScope, offset, offset)
