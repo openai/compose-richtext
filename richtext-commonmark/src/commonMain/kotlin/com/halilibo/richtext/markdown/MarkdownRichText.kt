@@ -75,6 +75,7 @@ internal fun RichTextScope.MarkdownRichText(
     animate = markdownRenderOptions.animate,
     textFadeInMs = markdownRenderOptions.textFadeInMs,
     debounceMs = markdownRenderOptions.debounceMs,
+    delayMs = markdownRenderOptions.delayMs,
   )
 }
 

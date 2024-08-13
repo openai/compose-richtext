@@ -30,8 +30,6 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
-import java.text.BreakIterator
-import java.util.Locale
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
@@ -47,8 +45,9 @@ public fun RichTextScope.Text(
   softWrap: Boolean = true,
   isLeafText: Boolean = true,
   animate: Boolean = false,
-  textFadeInMs: Int = 1000,
+  textFadeInMs: Int = 400,
   debounceMs: Int = 200,
+  delayMs: Int = 200,
   overflow: TextOverflow = TextOverflow.Clip,
   maxLines: Int = Int.MAX_VALUE
 ) {
@@ -67,6 +66,7 @@ public fun RichTextScope.Text(
     debounceMs = debounceMs,
     textFadeInMs = textFadeInMs,
     isLeafText = isLeafText,
+    delayMs = delayMs,
     hasInlineTextContent = inlineContents.isNotEmpty(),
   )
 
@@ -110,6 +110,7 @@ private fun rememberAnimatedText(
   contentColor: Color,
   debounceMs: Int,
   textFadeInMs: Int,
+  delayMs: Int,
   isLeafText: Boolean,
   hasInlineTextContent: Boolean,
 ): AnnotatedString {
@@ -139,7 +140,7 @@ private fun rememberAnimatedText(
     }
     LaunchedEffect(debouncedText) {
       if (debouncedText.text.isNotEmpty()) {
-        //readyToAnimateText.value = debouncedText.segmentIntoPhrases()
+        readyToAnimateText.value = debouncedText.segmentIntoPhrases()
       }
     }
 
@@ -147,16 +148,17 @@ private fun rememberAnimatedText(
       val phrases = readyToAnimateText.value
       phrases.phraseSegments
         .filter { it > lastAnimationIndex.value && it != phrases.phraseSegments.lastOrNull() }
-        .forEachIndexed { index, phraseIndex ->
-//          println("Launching animation $index. current text: ${readyToAnimateText.value.annotatedString.text}")
+        .forEach { phraseIndex ->
           animations[phraseIndex] = TextAnimation(phraseIndex, 0f)
           lastAnimationIndex.value = phraseIndex
           coroutineScope.launch {
             textToRender.value = readyToAnimateText.value.makeCompletePhraseString(!isLeafText)
-//            println("animation index: ${phraseIndex} Phrases: ${phrases.phraseSegments}, lastAnimationIndex: ${lastAnimationIndex.value} animated text: ${textToRender.value.text.substring(phraseIndex, textToRender.value.text.length)}")
             Animatable(0f).animateTo(
               targetValue = 1f,
-              animationSpec = tween(durationMillis = textFadeInMs, delayMillis = animations.delayInMillis())
+              animationSpec = tween(
+                durationMillis = textFadeInMs,
+                delayMillis = (animations.size * delayMs).coerceAtMost(2000),
+              )
             ) {
               animations[phraseIndex] = TextAnimation(phraseIndex, value)
             }
@@ -176,10 +178,6 @@ private fun rememberAnimatedText(
   } else {
     annotated
   }
-}
-
-private fun Map<Int, TextAnimation>.delayInMillis(): Int {
-  return size * 200
 }
 
 private data class TextAnimation(val startIndex: Int, val alpha: Float)
@@ -204,11 +202,9 @@ private fun AnnotatedString.animateAlphas(animations: Collection<TextAnimation>,
 }
 
 private fun AnnotatedString.changeAlpha(alpha: Float, contentColor: Color): AnnotatedString {
-  val newWordsStyles =
-    listOf(AnnotatedString.Range(SpanStyle(contentColor.copy(alpha = alpha)), 0, length)) +
-        spanStyles.map { spanstyle ->
-          spanstyle.copy(item = spanstyle.item.copy(color = spanstyle.item.color.copy(alpha = alpha)))
-        }
+  val newWordsStyles = spanStyles.map { spanstyle ->
+        spanstyle.copy(item = spanstyle.item.copy(color = spanstyle.item.color.copy(alpha = alpha)))
+      } + listOf(AnnotatedString.Range(SpanStyle(contentColor.copy(alpha = alpha)), 0, length))
   return AnnotatedString(text, newWordsStyles)
 }
 

@@ -120,7 +120,7 @@ import kotlin.random.Random
                     var currentIndex = 0
 
                     while (currentIndex < sampleMarkdown.length) {
-                      val randomChars = 20//random.nextFloat() * 2.4f
+                      val randomChars = 2//random.nextFloat() * 2.4f
                       currentIndex += randomChars// (randomChars * randomChars * randomChars).toInt()
                       textLength = minOf(currentIndex, sampleMarkdown.length)
 
