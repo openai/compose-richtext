@@ -47,7 +47,7 @@ public fun RichTextScope.Text(
   animate: Boolean = false,
   textFadeInMs: Int = 400,
   debounceMs: Int = 200,
-  delayMs: Int = 200,
+  delayMs: Int = 100,
   overflow: TextOverflow = TextOverflow.Clip,
   maxLines: Int = Int.MAX_VALUE
 ) {
@@ -140,7 +140,7 @@ private fun rememberAnimatedText(
     }
     LaunchedEffect(debouncedText) {
       if (debouncedText.text.isNotEmpty()) {
-        readyToAnimateText.value = debouncedText.segmentIntoPhrases()
+        readyToAnimateText.value = debouncedText.segmentIntoPhrases(isComplete = true)
       }
     }
 

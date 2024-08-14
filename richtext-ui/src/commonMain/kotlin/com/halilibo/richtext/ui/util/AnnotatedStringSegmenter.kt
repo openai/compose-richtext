@@ -18,7 +18,7 @@ public data class PhraseAnnotatedString(
   }
 }
 
-public fun AnnotatedString.segmentIntoPhrases(): PhraseAnnotatedString {
+public fun AnnotatedString.segmentIntoPhrases(isComplete: Boolean = false): PhraseAnnotatedString {
   val stylePhrases = stylePhrases()
   val phrases = stylePhrases
     .map { it.split(delimiters = phraseMarkers.toCharArray(), ignoreCase = false) }
@@ -26,10 +26,13 @@ public fun AnnotatedString.segmentIntoPhrases(): PhraseAnnotatedString {
   val phraseSegments = mutableListOf(0)
   for (phrase in phrases) {
     if (phrase != phrases.last()) {
+      if (phrase.length > MAX_PHRASE_LENGTH * 1.2) {
+        phraseSegments.add(phraseSegments.last() + MAX_PHRASE_LENGTH)
+      }
       phraseSegments.add(text.length.coerceAtMost(phraseSegments.last() + phrase.length + 1))
     }
   }
-  if (phrases.lastOrNull()?.lastOrNull() in phraseMarkers) {
+  if (isComplete || phrases.lastOrNull()?.lastOrNull() in phraseMarkers) {
     phraseSegments.add(text.length)
   }
   return PhraseAnnotatedString(
@@ -63,6 +66,7 @@ private val phraseMarkers = listOf(
   '¿',    // Inverted question mark
   '。',   // Chinese/Japanese period
   '、',   // Chinese/Japanese comma
+  '，',   // Chinese/Japanese full-width comma
   '？',   // Full-width question mark
   '！',   // Full-width exclamation mark
   '：',   // Full-width colon
@@ -78,3 +82,5 @@ private val phraseMarkers = listOf(
   '፧',    // Ethiopic question mark
   '፨'     // Ethiopic paragraph separator
 )
+
+private const val MAX_PHRASE_LENGTH = 50
