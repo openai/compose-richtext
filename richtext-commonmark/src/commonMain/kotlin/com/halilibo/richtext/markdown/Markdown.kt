@@ -39,6 +39,7 @@ import com.halilibo.richtext.ui.HorizontalRule
 import com.halilibo.richtext.ui.ListType.Ordered
 import com.halilibo.richtext.ui.ListType.Unordered
 import com.halilibo.richtext.ui.RichTextScope
+import com.halilibo.richtext.ui.string.DefaultMarkdownAnimationState
 import com.halilibo.richtext.ui.string.InlineContent
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
@@ -112,7 +113,7 @@ public fun RichTextScope.Markdown(
       { url -> it.openUri(url) }
     }
   }
-  val animationState = remember { mutableStateOf(MarkdownAnimationState()) }
+  val animationState = remember { mutableStateOf(DefaultMarkdownAnimationState) }
   CompositionLocalProvider(LocalOnLinkClicked provides realLinkClickedHandler) {
     RecursiveRenderMarkdownAst(
       content.toAstNode(),

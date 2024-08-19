@@ -48,7 +48,7 @@ public fun RichTextScope.Text(
   isLeafText: Boolean = true,
   renderOptions: RichTextRenderOptions = RichTextRenderOptions(),
   sharedAnimationState: MutableState<MarkdownAnimationState> =
-    mutableStateOf(MarkdownAnimationState()),
+    mutableIntStateOf(DefaultMarkdownAnimationState),
   overflow: TextOverflow = TextOverflow.Clip,
   maxLines: Int = Int.MAX_VALUE
 ) {
@@ -100,14 +100,13 @@ public fun RichTextScope.Text(
   }
 }
 
-public data class MarkdownAnimationState(
-  val totalOffset: Int = 0,
-){
-  public fun addAnimation(): MarkdownAnimationState = copy(totalOffset = totalOffset + 1)
-  public fun removeAnimation(): MarkdownAnimationState = copy(totalOffset = totalOffset - 1)
-  public fun toDelayMs(defaultDelayMs: Int): Int =
-    (sqrt(totalOffset.toDouble()) * defaultDelayMs).toInt()
-}
+public typealias MarkdownAnimationState = Int
+// Add a default value
+public val DefaultMarkdownAnimationState: MarkdownAnimationState = 0
+private fun MarkdownAnimationState.addAnimation(): MarkdownAnimationState = this + 1
+private fun MarkdownAnimationState.removeAnimation(): MarkdownAnimationState = this - 1
+private fun MarkdownAnimationState.toDelayMs(defaultDelayMs: Int): Int =
+  (sqrt(this.toDouble()) * defaultDelayMs).toInt()
 
 @Composable
 @OptIn(FlowPreview::class)
