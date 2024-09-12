@@ -54,6 +54,7 @@ private fun AnnotatedString.stylePhrases(): List<String> {
 }
 
 private val phraseMarkers = listOf(
+  ' ',    // Space
   '.',    // Period
   '!',    // Exclamation mark
   '?',    // Question mark
@@ -87,4 +88,4 @@ private val phraseMarkers = listOf(
   '፨'     // Ethiopic paragraph separator
 )
 
-private const val MAX_PHRASE_LENGTH = 50
+private const val MAX_PHRASE_LENGTH = 30

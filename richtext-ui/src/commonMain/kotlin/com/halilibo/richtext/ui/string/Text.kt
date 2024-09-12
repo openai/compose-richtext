@@ -31,6 +31,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
+import kotlin.math.pow
 import kotlin.math.sqrt
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -106,7 +107,7 @@ public val DefaultMarkdownAnimationState: MarkdownAnimationState = 0
 private fun MarkdownAnimationState.addAnimation(): MarkdownAnimationState = this + 1
 private fun MarkdownAnimationState.removeAnimation(): MarkdownAnimationState = this - 1
 public fun MarkdownAnimationState.toDelayMs(defaultDelayMs: Int): Int =
-  (sqrt(this.toDouble()) * defaultDelayMs).toInt()
+  (this.toDouble().pow(0.7) * defaultDelayMs).toInt()
 
 @Composable
 @OptIn(FlowPreview::class)

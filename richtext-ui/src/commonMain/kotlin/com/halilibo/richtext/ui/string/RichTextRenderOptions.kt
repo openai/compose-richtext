@@ -5,9 +5,9 @@ package com.halilibo.richtext.ui.string
  */
 public data class RichTextRenderOptions(
   val animate: Boolean = false,
-  val textFadeInMs: Int = 600,
+  val textFadeInMs: Int = 500,
   val debounceMs: Int = 100050,
-  val delayMs: Int = 10,
+  val delayMs: Int = 70,
   val onTextAnimate: () -> Unit = {},
 ) {
   public companion object {
