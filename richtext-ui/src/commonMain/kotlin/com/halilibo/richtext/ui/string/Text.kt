@@ -31,8 +31,6 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
-import kotlin.math.pow
-import kotlin.math.sqrt
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
@@ -49,7 +47,7 @@ public fun RichTextScope.Text(
   isLeafText: Boolean = true,
   renderOptions: RichTextRenderOptions = RichTextRenderOptions(),
   sharedAnimationState: MutableState<MarkdownAnimationState> =
-    mutableIntStateOf(DefaultMarkdownAnimationState),
+    mutableStateOf(DefaultMarkdownAnimationState),
   overflow: TextOverflow = TextOverflow.Clip,
   maxLines: Int = Int.MAX_VALUE
 ) {
@@ -101,13 +99,33 @@ public fun RichTextScope.Text(
   }
 }
 
-public typealias MarkdownAnimationState = Int
+public data class MarkdownAnimationState(
+  val lastAnimationStartMs: Long = 0,
+) {
+  public fun addAnimation(renderOptions: RichTextRenderOptions): MarkdownAnimationState = copy(
+    lastAnimationStartMs = calculatedDelay(renderOptions) + System.currentTimeMillis()
+  )
+  private fun calculatedDelay(renderOptions: RichTextRenderOptions): Long {
+    val now = System.currentTimeMillis()
+    return if (now >= lastAnimationStartMs) {
+       renderOptions.delayMs.toLong()
+    } else {
+      val diffMs = lastAnimationStartMs - now
+      when {
+        diffMs < renderOptions.delayMs -> renderOptions.delayMs - diffMs
+        else -> diffMs + (renderOptions.delayMs * Math.pow(
+          (renderOptions.delayMs / diffMs.toDouble()),
+          renderOptions.delayExponent
+        )).toLong()
+      }
+    }
+  }
+
+  public fun toDelayMs(): Int =
+    (lastAnimationStartMs - System.currentTimeMillis()).coerceAtLeast(0).toInt()
+}
 // Add a default value
-public val DefaultMarkdownAnimationState: MarkdownAnimationState = 0
-private fun MarkdownAnimationState.addAnimation(): MarkdownAnimationState = this + 1
-private fun MarkdownAnimationState.removeAnimation(): MarkdownAnimationState = this - 1
-public fun MarkdownAnimationState.toDelayMs(renderOptions: RichTextRenderOptions): Int =
-  (this.toDouble().pow(renderOptions.delayExponent) * renderOptions.delayMs).toInt()
+public val DefaultMarkdownAnimationState: MarkdownAnimationState = MarkdownAnimationState()
 
 @Composable
 @OptIn(FlowPreview::class)
@@ -160,13 +178,13 @@ private fun rememberAnimatedText(
           lastAnimationIndex.value = phraseIndex
           coroutineScope.launch {
             textToRender.value = readyToAnimateText.value.makeCompletePhraseString(!isLeafText)
-            sharedAnimationState.value = sharedAnimationState.value.addAnimation()
+            sharedAnimationState.value = sharedAnimationState.value.addAnimation(renderOptions)
             var hasAnimationFired = false
             Animatable(0f).animateTo(
               targetValue = 1f,
               animationSpec = tween(
                 durationMillis = renderOptions.textFadeInMs,
-                delayMillis = sharedAnimationState.value.toDelayMs(renderOptions),
+                delayMillis = sharedAnimationState.value.toDelayMs(),
               )
             ) {
               if (!hasAnimationFired) {
@@ -177,7 +195,6 @@ private fun rememberAnimatedText(
               }
               animations[phraseIndex] = TextAnimation(phraseIndex, value)
             }
-            sharedAnimationState.value = sharedAnimationState.value.removeAnimation()
             animations.remove(phraseIndex)
           }
         }
@@ -209,7 +226,9 @@ private fun AnnotatedString.animateAlphas(
   var remainingText = this
   val modifiedTextSnippets = mutableStateListOf<AnnotatedString>()
   animations.sortedByDescending { it.startIndex }.forEach { animation ->
-    if (animation.startIndex >= remainingText.length) return@forEach
+    if (animation.startIndex >= remainingText.length) {
+      return@forEach
+    }
     modifiedTextSnippets.add(
       remainingText.subSequence(animation.startIndex, remainingText.length)
         .changeAlpha(animation.alpha, contentColor)
