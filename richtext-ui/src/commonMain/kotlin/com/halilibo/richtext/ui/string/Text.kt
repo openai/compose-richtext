@@ -31,6 +31,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
+import kotlin.math.pow
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
@@ -113,8 +114,7 @@ public data class MarkdownAnimationState(
       val diffMs = lastAnimationStartMs - now
       when {
         diffMs < renderOptions.delayMs -> renderOptions.delayMs - diffMs
-        else -> diffMs + (renderOptions.delayMs * Math.pow(
-          (renderOptions.delayMs / diffMs.toDouble()),
+        else -> diffMs + (renderOptions.delayMs * (renderOptions.delayMs / diffMs.toDouble()).pow(
           renderOptions.delayExponent
         )).toLong()
       }
@@ -248,7 +248,10 @@ private fun AnnotatedString.changeAlpha(alpha: Float, contentColor: Color): Anno
 }
 
 
-private fun AnnotatedString.getConsumableAnnotations(textFormatObjects: Map<String, Any>, offset: Int): Sequence<Format.Link> =
+private fun AnnotatedString.getConsumableAnnotations(
+  textFormatObjects: Map<String, Any>,
+  offset: Int,
+): Sequence<Format.Link> =
   getStringAnnotations(Format.FormatAnnotationScope, offset, offset)
     .asSequence()
     .mapNotNull {
