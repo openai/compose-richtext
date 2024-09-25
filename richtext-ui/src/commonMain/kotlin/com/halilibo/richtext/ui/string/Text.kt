@@ -186,29 +186,24 @@ private fun rememberAnimatedText(
       debouncedTextFlow.value = annotated
       // If we detect a new phrase, kick off the animation now.
       val phrases = annotated.segmentIntoPhrases(renderOptions, isComplete = !isLeafText)
-      if (phrases.hasNewPhrasesFrom(readyToAnimateText.value)) {
-        if (phrases != readyToAnimateText.value) {
-          readyToAnimateText.value = phrases
-          animationUpdate()
-        }
-      }
+      if (phrases.hasNewPhrasesFrom(readyToAnimateText.value).not()) return@LaunchedEffect
+      readyToAnimateText.value = phrases
+      animationUpdate()
     }
     LaunchedEffect(isLeafText, annotated) {
-      if (!isLeafText) {
-        val phrases = annotated.segmentIntoPhrases(renderOptions, isComplete = true)
-        if (phrases != readyToAnimateText.value) {
-          readyToAnimateText.value = phrases
-          animationUpdate()
-        }
+      if (isLeafText) return@LaunchedEffect
+      val phrases = annotated.segmentIntoPhrases(renderOptions, isComplete = true)
+      if (phrases != readyToAnimateText.value) {
+        readyToAnimateText.value = phrases
+        animationUpdate()
       }
     }
     LaunchedEffect(debouncedText) {
-      if (debouncedText.text.isNotEmpty()) {
-        val phrases = debouncedText.segmentIntoPhrases(renderOptions, isComplete = true)
-        if (phrases != readyToAnimateText.value) {
-          readyToAnimateText.value = phrases
-            animationUpdate()
-        }
+      if (debouncedText.text.isEmpty()) return@LaunchedEffect
+      val phrases = debouncedText.segmentIntoPhrases(renderOptions, isComplete = true)
+      if (phrases != readyToAnimateText.value) {
+        readyToAnimateText.value = phrases
+          animationUpdate()
       }
     }
 
