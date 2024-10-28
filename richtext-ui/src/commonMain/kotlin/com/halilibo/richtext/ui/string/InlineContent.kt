@@ -98,7 +98,7 @@ public class InlineContent(
       val alpha = when (annotation) {
         null -> 1f
         else -> annotatedString.spanStyles
-          .filter { it.start <= annotation.start && it.end > annotation.end }
+          .filter { it.start <= annotation.start && it.end >= annotation.end }
           .minOfOrNull { it.item.alpha } ?: 1f
       }
       Layout(
@@ -134,6 +134,7 @@ public class InlineContent(
         if (contentPlaceable.width != size?.width
           || contentPlaceable.height != size?.height
         ) {
+          println("Changing size from $size to ${IntSize(contentPlaceable.width, contentPlaceable.height)}")
           size = IntSize(contentPlaceable.width, contentPlaceable.height)
         }
 

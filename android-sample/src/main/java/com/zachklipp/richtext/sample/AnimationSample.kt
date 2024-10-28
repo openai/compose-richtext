@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
@@ -27,6 +28,7 @@ import com.halilibo.richtext.ui.string.InlineContent
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
 import com.halilibo.richtext.ui.string.RichTextStringStyle
 import com.zachklipp.richtext.sample.contentreference.ApiContentReference
+import com.zachklipp.richtext.sample.contentreference.ApiContentReference.Tldr
 import com.zachklipp.richtext.sample.contentreference.ContentReferenceDelimiterProcessor
 import com.zachklipp.richtext.sample.contentreference.ContentReferenceNode
 import org.commonmark.node.AbstractVisitor
@@ -45,59 +47,62 @@ fun AnimationSample() {
       debounceMs = 4000,
     )
   }
-//  val content = Markdown(
-//    "abc 234567890123456 def",
-//    references = listOf(
-//      ApiContentReference.Tldr(4, 19, "OpenAI", "", listOf("OpenAI"))
-//    )
-//  )
-
   val content = Markdown(
-    "abc def ghi jkl mno pqr",
+    "abc 234567890123456 def",
+    references = listOf(
+      ApiContentReference.Tldr(4, 19, "OpenAI", "", listOf("OpenAI"))
+    )
   )
 
-  RichText(
-    style = MessageRichTextStyle,
-    modifier = Modifier.padding(8.dp),
-  ) {
-    Markdown(
-      content.markdownNode,
-      richtextRenderOptions = renderOptions,
-      inlineContentOverride = { node, stringBuilder, defaultContent, _ ->
-        val type = node.type
-        if (type is AstCustomNode) {
-          when (val n = type.node) {
-            is ContentReferenceNode -> {
-              when (val cr = n.contentReference) {
-                is ApiContentReference.Tldr -> {
-                  stringBuilder.tldrContent(cr, {}, { _, _ -> })
+  MaterialTheme {
+    RichText(
+      style = MessageRichTextStyle,
+      modifier = Modifier.padding(8.dp),
+    ) {
+      Markdown(
+        content.markdownNode,
+        richtextRenderOptions = renderOptions,
+        inlineContentOverride = { node, stringBuilder, defaultContent, _ ->
+          val type = node.type
+          if (type is AstCustomNode) {
+            when (val n = type.node) {
+              is ContentReferenceNode -> {
+                when (val cr = n.contentReference) {
+                  is Tldr -> {
+                    stringBuilder.tldrContent(cr, {}, { _, _ -> })
+                  }
+
+                  else -> stringBuilder.appendInlineContent(
+                    content = InlineContent(
+                      renderOnNewLine = false,
+                      initialSize = {
+                        IntSize(
+                          51.dp.toPx().roundToInt(),
+                          13.dp.toPx().roundToInt()
+                        )
+                      },
+                      placeholderVerticalAlign = PlaceholderVerticalAlign.Center,
+                      content = {
+                        Box(
+                          Modifier
+                            .size(51.dp, 13.dp)
+                            .background(Color.Red)
+                        )
+                      },
+                    ),
+                  )
                 }
-
-                else -> stringBuilder.appendInlineContent(
-                  content = InlineContent(
-                    renderOnNewLine = false,
-                    initialSize = { IntSize(51.dp.toPx().roundToInt(), 13.dp.toPx().roundToInt()) },
-                    placeholderVerticalAlign = PlaceholderVerticalAlign.Center,
-                    content = {
-                      Box(
-                        Modifier
-                          .size(51.dp, 13.dp)
-                          .background(Color.Red)
-                      )
-                    },
-                  ),
-                )
+                null
               }
-              null
-            }
 
-            else -> defaultContent()
+              else -> defaultContent()
+            }
+          } else {
+            defaultContent()
           }
-        } else {
-          defaultContent()
-        }
-      },
-    )
+        },
+      )
+    }
   }
 }
 

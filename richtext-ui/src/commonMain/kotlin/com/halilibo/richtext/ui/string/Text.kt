@@ -116,6 +116,7 @@ public data class MarkdownAnimationState(
   )
 
   private fun calculatedDelay(renderOptions: RichTextRenderOptions): Long {
+    if (lastAnimationStartMs == 0L) return 0
     val now = System.currentTimeMillis()
     return if (now >= lastAnimationStartMs) {
       renderOptions.delayMs.toLong()
@@ -263,7 +264,7 @@ private fun AnnotatedString.changeAlpha(alpha: Float, contentColor: Color): Anno
   return createAnnotatedStringUsingReflection(
     text,
     newWordsStyles,
-    null,
+    paragraphStyles,
     getStringAnnotations(0, length).toList()
   )
 

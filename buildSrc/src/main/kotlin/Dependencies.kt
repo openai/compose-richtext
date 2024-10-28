@@ -36,7 +36,7 @@ object Compose {
   val activity = "androidx.activity:activity-compose:1.7.2"
   val foundation = "androidx.compose.foundation:foundation:$version"
   val material = "androidx.compose.material:material:$version"
-  val material3 = "androidx.compose.material3:material3:1.0.1"
+  val material3 = "androidx.compose.material3:material3:1.3.0"
   val icons = "androidx.compose.material:material-icons-extended:$version"
   val test = "androidx.ui:ui-test:$version"
   val tooling = "androidx.compose.ui:ui-tooling:$version"
