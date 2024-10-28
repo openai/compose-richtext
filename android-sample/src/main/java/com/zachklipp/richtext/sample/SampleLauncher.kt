@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 private val Samples = listOf<Pair<String, @Composable () -> Unit>>(
   "RichText Demo" to @Composable { RichTextSample() },
   "Markdown Demo" to @Composable { MarkdownSample() },
+  "Animation" to @Composable { AnimationSample() },
   "Pagination" to @Composable { PagedSample() },
   "Printable Document" to @Composable { DocumentSample() },
   "Slideshow" to @Composable { SlideshowSample() },
@@ -43,7 +44,8 @@ private val Samples = listOf<Pair<String, @Composable () -> Unit>>(
 }
 
 @Composable fun SampleLauncher() {
-  var currentSampleIndex: Int? by remember { mutableStateOf(null) }
+  // DO NOT SUBMIT
+  var currentSampleIndex: Int? by remember { mutableStateOf(2) }
 
   Crossfade(currentSampleIndex) { index ->
     if (index != null) {

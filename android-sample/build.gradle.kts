@@ -40,4 +40,5 @@ dependencies {
   implementation(Compose.icons)
   implementation(Compose.material)
   implementation(Compose.tooling)
+  implementation(Compose.material3)
 }

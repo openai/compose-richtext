@@ -16,7 +16,7 @@ object Network {
 
 object Kotlin {
   // keep in sync with buildSrc/build.gradle.kts
-  val version = "1.9.20"
+  val version = "1.9.25"
   val binaryCompatibilityValidatorPlugin = "org.jetbrains.kotlinx:binary-compatibility-validator:0.9.0"
   val gradlePlugin = "org.jetbrains.kotlin:kotlin-gradle-plugin:$version"
 
@@ -30,9 +30,9 @@ object Kotlin {
 val ktlint = "org.jlleitschuh.gradle:ktlint-gradle:10.0.0"
 
 object Compose {
-  val version = "1.5.4"
-  val compilerVersion = "1.5.4"
-  val desktopVersion = "1.5.11"
+  val version = "1.7.0"
+  val compilerVersion = "1.5.15"
+  val desktopVersion = "1.7.0"
   val activity = "androidx.activity:activity-compose:1.7.2"
   val foundation = "androidx.compose.foundation:foundation:$version"
   val material = "androidx.compose.material:material:$version"

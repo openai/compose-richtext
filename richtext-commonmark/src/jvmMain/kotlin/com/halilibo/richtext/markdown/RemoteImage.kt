@@ -51,7 +51,7 @@ private fun toByteArray(bitmap: BufferedImage): ByteArray {
 
 private suspend fun loadFullImage(source: String): BufferedImage? = withContext(Dispatchers.IO) {
   runCatching {
-    val url = URL(source)
+    @Suppress("DEPRECATION") val url = URL(source)
     val connection: HttpURLConnection = url.openConnection() as HttpURLConnection
     connection.connectTimeout = 5000
     connection.connect()

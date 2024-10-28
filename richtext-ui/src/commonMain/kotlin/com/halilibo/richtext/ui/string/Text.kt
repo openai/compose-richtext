@@ -17,6 +17,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.ParagraphStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.style.TextOverflow
@@ -31,6 +32,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
+import java.lang.reflect.Constructor
 import kotlin.math.pow
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -62,15 +64,15 @@ public fun RichTextScope.Text(
 
   val animatedText = rememberAnimatedText(
     annotated = annotated,
-    contentColor = contentColor,
     renderOptions = renderOptions,
-    isLeafText = isLeafText,
+    contentColor = contentColor,
     sharedAnimationState = sharedAnimationState,
-    hasInlineTextContent = inlineContents.isNotEmpty(),
+    isLeafText = isLeafText,
   )
 
   BoxWithConstraints(modifier = modifier) {
     val inlineTextContents = manageInlineTextContents(
+      animatedText,
       inlineContents = inlineContents,
       textConstraints = constraints,
     )
@@ -89,10 +91,16 @@ public fun RichTextScope.Text(
         // clickable on the left side.
         // However, if a paragraph ends with a link, the link will be clickable past the
         // end of the last line.
-        annotated.getConsumableAnnotations(text.formatObjects, offset.coerceAtMost(annotated.length - 1)).any()
+        annotated.getConsumableAnnotations(
+          text.formatObjects,
+          offset.coerceAtMost(annotated.length - 1)
+        ).any()
       },
       onClick = { offset ->
-        annotated.getConsumableAnnotations(text.formatObjects, offset.coerceAtMost(annotated.length - 1))
+        annotated.getConsumableAnnotations(
+          text.formatObjects,
+          offset.coerceAtMost(annotated.length - 1)
+        )
           .firstOrNull()
           ?.let { link -> link.onClick() }
       }
@@ -106,10 +114,11 @@ public data class MarkdownAnimationState(
   public fun addAnimation(renderOptions: RichTextRenderOptions): MarkdownAnimationState = copy(
     lastAnimationStartMs = calculatedDelay(renderOptions) + System.currentTimeMillis()
   )
+
   private fun calculatedDelay(renderOptions: RichTextRenderOptions): Long {
     val now = System.currentTimeMillis()
     return if (now >= lastAnimationStartMs) {
-       renderOptions.delayMs.toLong()
+      renderOptions.delayMs.toLong()
     } else {
       val diffMs = lastAnimationStartMs - now
       when {
@@ -124,6 +133,7 @@ public data class MarkdownAnimationState(
   public fun toDelayMs(): Int =
     (lastAnimationStartMs - System.currentTimeMillis()).coerceAtLeast(0).toInt()
 }
+
 // Add a default value
 public val DefaultMarkdownAnimationState: MarkdownAnimationState = MarkdownAnimationState()
 
@@ -135,7 +145,6 @@ private fun rememberAnimatedText(
   contentColor: Color,
   sharedAnimationState: MutableState<MarkdownAnimationState>,
   isLeafText: Boolean,
-  hasInlineTextContent: Boolean,
 ): AnnotatedString {
   val coroutineScope = rememberCoroutineScope()
   val animations = remember { mutableStateMapOf<Int, TextAnimation>() }
@@ -150,6 +159,7 @@ private fun rememberAnimatedText(
     }.collectAsState(AnnotatedString(""), coroutineScope.coroutineContext)
 
     val animationUpdate: () -> Unit = {
+      println("Gabe animationUpdate lastIndex ${lastAnimationIndex.value}")
       val phrases = readyToAnimateText.value
       phrases.phraseSegments
         .filter { it > lastAnimationIndex.value }
@@ -160,6 +170,7 @@ private fun rememberAnimatedText(
             textToRender.value = readyToAnimateText.value.makeCompletePhraseString(!isLeafText)
             sharedAnimationState.value = sharedAnimationState.value.addAnimation(renderOptions)
             var hasAnimationFired = false
+            println("Gabe animate $phraseIndex: start")
             Animatable(0f).animateTo(
               targetValue = 1f,
               animationSpec = tween(
@@ -175,6 +186,7 @@ private fun rememberAnimatedText(
               }
               animations[phraseIndex] = TextAnimation(phraseIndex, value)
             }
+            println("Gabe animate $phraseIndex: end")
             animations.remove(phraseIndex)
           }
         }
@@ -203,28 +215,23 @@ private fun rememberAnimatedText(
       val phrases = debouncedText.segmentIntoPhrases(renderOptions, isComplete = true)
       if (phrases != readyToAnimateText.value) {
         readyToAnimateText.value = phrases
-          animationUpdate()
+        animationUpdate()
       }
     }
-
   } else {
     // If we're not animating, just render the text as is.
     textToRender.value = annotated
   }
 
 
-  // Ignore animated text if we have inline content, since it causes crashes.
-  return if (!hasInlineTextContent) {
-    textToRender.value.animateAlphas(animations.values, contentColor)
-  } else {
-    annotated
-  }
+  return textToRender.value.animateAlphas(animations.values, contentColor)
 }
 
-private data class TextAnimation(val startIndex: Int, val alpha: Float) 
+private data class TextAnimation(val startIndex: Int, val alpha: Float)
 
 private fun AnnotatedString.animateAlphas(
-  animations: Collection<TextAnimation>, contentColor: Color): AnnotatedString {
+  animations: Collection<TextAnimation>, contentColor: Color
+): AnnotatedString {
   if (this.text.isEmpty() || animations.isEmpty()) {
     return this
   }
@@ -245,13 +252,48 @@ private fun AnnotatedString.animateAlphas(
   }.toAnnotatedString()
 }
 
+@Suppress("UNUSED_PARAMETER")
 private fun AnnotatedString.changeAlpha(alpha: Float, contentColor: Color): AnnotatedString {
-  val newWordsStyles = spanStyles.map { spanstyle ->
-        spanstyle.copy(item = spanstyle.item.copy(color = spanstyle.item.color.copy(alpha = alpha)))
-      } + listOf(AnnotatedString.Range(SpanStyle(contentColor.copy(alpha = alpha)), 0, length))
-  return AnnotatedString(text, newWordsStyles)
+  val newWordsStyles = spanStyles.map { spanStyle ->
+    spanStyle.copy(item = spanStyle.item.copy(color = spanStyle.item.color.copy(alpha = alpha)))
+  } + listOf(AnnotatedString.Range(SpanStyle(contentColor.copy(alpha = alpha)), 0, length))
+
+//  return AnnotatedString(text, newWordsStyles)
+//  println("Gabe Creating annotated string with reflection")
+  return createAnnotatedStringUsingReflection(
+    text,
+    newWordsStyles,
+    null,
+    getStringAnnotations(0, length).toList()
+  )
+
+//  val builder = AnnotatedString.Builder()
+//  builder.pushStyle(SpanStyle(contentColor.copy(alpha = alpha)))
+//  newWordsStyles.forEach { builder.pushStyle(it.item) }
+//  builder.append(this)
+//  repeat(newWordsStyles.size) { builder.pop() }
+//  builder.pop()
+
+//  return builder.toAnnotatedString()
+
 }
 
+private fun createAnnotatedStringUsingReflection(
+  text: String,
+  spanStylesOrNull: List<AnnotatedString.Range<SpanStyle>>? = null,
+  paragraphStylesOrNull: List<AnnotatedString.Range<ParagraphStyle>>? = null,
+  annotations: List<AnnotatedString.Range<out Any>>? = null
+): AnnotatedString {
+  val constructor: Constructor<AnnotatedString> =
+    AnnotatedString::class.java.getDeclaredConstructor(
+      String::class.java,
+      List::class.java,
+      List::class.java,
+      List::class.java
+    )
+  constructor.isAccessible = true
+  return constructor.newInstance(text, spanStylesOrNull, paragraphStylesOrNull, annotations)
+}
 
 private fun AnnotatedString.getConsumableAnnotations(
   textFormatObjects: Map<String, Any>,

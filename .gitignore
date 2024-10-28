@@ -17,6 +17,8 @@
 /.idea/artifacts
 /.idea/vcs.xml
 /.idea/other.xml
+/.idea/runConfigurations.xml
+/.idea/inspectionProfiles/Project_Default.xml
 .DS_Store
 build/
 /captures
