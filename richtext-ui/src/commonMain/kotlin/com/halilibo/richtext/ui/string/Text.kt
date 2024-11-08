@@ -235,9 +235,8 @@ private fun AnnotatedString.animateAlphas(
   val inlineContentSpans = getStringAnnotations(0, length)
     .filter { it.tag == "androidx.compose.foundation.text.inlineContent" }
   val inlineContentStyles = spanStyles.filter { it.tag == "androidx.compose.foundation.text.inlineContent"}
-  val inlineSpansToWatchOutFor = inlineContentSpans + inlineContentStyles
   // Chopping up a string with inline content in it causes a crash. So we need to fade in the entire block.
-  if (inlineSpansToWatchOutFor.isNotEmpty()) {
+  if (inlineContentSpans.isNotEmpty() || inlineContentStyles.isNotEmpty()) {
     return remainingText.changeAlpha(animations.first().alpha, contentColor)
   }
   animations.sortedByDescending { it.startIndex }.forEach { animation ->
