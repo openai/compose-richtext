@@ -51,7 +51,7 @@ public fun RichTextScope.Text(
   sharedAnimationState: MutableState<MarkdownAnimationState> =
     mutableStateOf(DefaultMarkdownAnimationState),
   overflow: TextOverflow = TextOverflow.Clip,
-  maxLines: Int = Int.MAX_VALUE
+  maxLines: Int = Int.MAX_VALUE,
 ) {
   val style = currentRichTextStyle.stringStyle
   val contentColor = currentContentColor
@@ -125,8 +125,6 @@ public data class MarkdownAnimationState(
       else -> diffMs + (renderOptions.delayMs * (renderOptions.delayMs / diffMs.toDouble()).pow(
         renderOptions.delayExponent
       )).toLong()
-    }.also {
-      println("Calculated delay: $it now: $now last: $lastAnimationStartMs diff: $diffMs")
     }
   }
 
@@ -234,6 +232,14 @@ private fun AnnotatedString.animateAlphas(
   }
   var remainingText = this
   val modifiedTextSnippets = mutableStateListOf<AnnotatedString>()
+  val inlineContentSpans = getStringAnnotations(0, length)
+    .filter { it.tag == "androidx.compose.foundation.text.inlineContent" }
+  val inlineContentStyles = spanStyles.filter { it.tag == "androidx.compose.foundation.text.inlineContent"}
+  val inlineSpansToWatchOutFor = inlineContentSpans + inlineContentStyles
+  // Chopping up a string with inline content in it causes a crash. So we need to fade in the entire block.
+  if (inlineSpansToWatchOutFor.isNotEmpty()) {
+    return remainingText.changeAlpha(animations.first().alpha, contentColor)
+  }
   animations.sortedByDescending { it.startIndex }.forEach { animation ->
     if (animation.startIndex >= remainingText.length) {
       return@forEach
