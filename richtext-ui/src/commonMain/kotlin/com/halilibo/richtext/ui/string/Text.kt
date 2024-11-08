@@ -182,7 +182,10 @@ private fun rememberAnimatedText(
               }
               animations[phraseIndex] = TextAnimation(phraseIndex, value)
             }
-            animations.remove(phraseIndex)
+            if (phraseIndex != 0) {
+              // Leave the very first animation around so the inlineContent fix below works.
+              animations.remove(phraseIndex)
+            }
           }
         }
       if (phrases.isComplete) {
@@ -255,6 +258,9 @@ private fun AnnotatedString.animateAlphas(
 }
 
 private fun AnnotatedString.changeAlpha(alpha: Float, contentColor: Color): AnnotatedString {
+  if (alpha == 1f) {
+    return this
+  }
   val newWordsStyles = spanStyles.map { spanStyle ->
     spanStyle.copy(item = spanStyle.item.copy(color = spanStyle.item.color.copy(alpha = alpha)))
   } + listOf(AnnotatedString.Range(SpanStyle(contentColor.copy(alpha = alpha)), 0, length))
