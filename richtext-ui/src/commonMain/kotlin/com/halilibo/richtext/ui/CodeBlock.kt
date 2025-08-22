@@ -5,13 +5,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
+import com.halilibo.richtext.ui.string.MarkdownAnimationState
+import com.halilibo.richtext.ui.string.RichTextRenderOptions
 
 /**
  * Defines how [CodeBlock]s are rendered.
@@ -57,9 +61,15 @@ internal fun CodeBlockStyle.resolveDefaults() = CodeBlockStyle(
  */
 @Composable public fun RichTextScope.CodeBlock(
   text: String,
+  markdownAnimationState: MarkdownAnimationState = remember { MarkdownAnimationState() },
+  richTextRenderOptions: RichTextRenderOptions = RichTextRenderOptions(),
   wordWrap: Boolean? = null
 ) {
-  CodeBlock(wordWrap = wordWrap) {
+  CodeBlock(
+    wordWrap = wordWrap,
+    markdownAnimationState = markdownAnimationState,
+    richTextRenderOptions = richTextRenderOptions,
+  ) {
     Text(text)
   }
 }
@@ -72,6 +82,8 @@ internal fun CodeBlockStyle.resolveDefaults() = CodeBlockStyle(
  */
 @Composable public fun RichTextScope.CodeBlock(
   wordWrap: Boolean? = null,
+  markdownAnimationState: MarkdownAnimationState = remember { MarkdownAnimationState() },
+  richTextRenderOptions: RichTextRenderOptions = RichTextRenderOptions(),
   children: @Composable RichTextScope.() -> Unit
 ) {
   val codeBlockStyle = currentRichTextStyle.resolveDefaults().codeBlockStyle!!
@@ -81,12 +93,14 @@ internal fun CodeBlockStyle.resolveDefaults() = CodeBlockStyle(
     codeBlockStyle.padding!!.toDp()
   }
   val resolvedWordWrap = wordWrap ?: codeBlockStyle.wordWrap!!
+  val alpha = rememberMarkdownFade(richTextRenderOptions, markdownAnimationState)
 
   CodeBlockLayout(
     wordWrap = resolvedWordWrap
   ) { layoutModifier ->
     Box(
       modifier = layoutModifier
+        .alpha(alpha.value)
         .then(modifier)
         .padding(blockPadding)
     ) {
