@@ -35,6 +35,16 @@ import kotlin.random.Random
   ChineseAnimatedRichTextSample()
 }
 
+@Preview
+@Composable private fun ThaiAnimatedRichTextSamplePreview() {
+  ThaiAnimatedRichTextSample()
+}
+
+@Preview
+@Composable private fun HindiAnimatedRichTextSamplePreview() {
+  HindiAnimatedRichTextSample()
+}
+
 @Composable fun AnimatedRichTextSample() {
   AnimatedTextWrapper(
     title = "Stream incrementally",
@@ -48,6 +58,22 @@ import kotlin.random.Random
     title = "Stream incrementally",
     completeContent = { ChineseCompleteTextSample() },
     chunkedContent = { ChineseChunkingTextSample() },
+  )
+}
+
+@Composable fun ThaiAnimatedRichTextSample() {
+  AnimatedTextWrapper(
+    title = "Stream incrementally",
+    completeContent = { ThaiCompleteTextSample() },
+    chunkedContent = { ThaiChunkingTextSample() },
+  )
+}
+
+@Composable fun HindiAnimatedRichTextSample() {
+  AnimatedTextWrapper(
+    title = "Stream incrementally",
+    completeContent = { HindiCompleteTextSample() },
+    chunkedContent = { HindiChunkingTextSample() },
   )
 }
 
@@ -187,6 +213,110 @@ private fun ChineseChunkingTextSample() {
   }
 }
 
+@Composable
+private fun ThaiCompleteTextSample() {
+  val markdownOptions = remember {
+    RichTextRenderOptions(
+      animate = true,
+      textFadeInMs = 500,
+      delayMs = 70,
+      debounceMs = 200,
+    )
+  }
+
+  RichText {
+    Markdown(
+      ThaiSampleText,
+      richtextRenderOptions = markdownOptions,
+    )
+  }
+}
+
+@Composable
+private fun ThaiChunkingTextSample() {
+  var currentText by remember { mutableStateOf("") }
+  var isComplete by remember { mutableStateOf(false) }
+
+  LaunchedEffect(Unit) {
+    var remaining = ThaiSampleText
+    while (remaining.isNotEmpty()) {
+      delay(200L + Random.nextInt(500))
+      val chunkLength = 6 + Random.nextInt(40)
+      currentText += remaining.take(chunkLength)
+      remaining = remaining.drop(chunkLength)
+    }
+    isComplete = true
+  }
+
+  val markdownOptions = remember(isComplete) {
+    RichTextRenderOptions(
+      animate = !isComplete,
+      textFadeInMs = 500,
+      delayMs = 70,
+      debounceMs = 200,
+    )
+  }
+
+  RichText {
+    Markdown(
+      currentText,
+      richtextRenderOptions = markdownOptions,
+    )
+  }
+}
+
+@Composable
+private fun HindiCompleteTextSample() {
+  val markdownOptions = remember {
+    RichTextRenderOptions(
+      animate = true,
+      textFadeInMs = 500,
+      delayMs = 70,
+      debounceMs = 200,
+    )
+  }
+
+  RichText {
+    Markdown(
+      HindiSampleText,
+      richtextRenderOptions = markdownOptions,
+    )
+  }
+}
+
+@Composable
+private fun HindiChunkingTextSample() {
+  var currentText by remember { mutableStateOf("") }
+  var isComplete by remember { mutableStateOf(false) }
+
+  LaunchedEffect(Unit) {
+    var remaining = HindiSampleText
+    while (remaining.isNotEmpty()) {
+      delay(200L + Random.nextInt(500))
+      val chunkLength = 6 + Random.nextInt(40)
+      currentText += remaining.take(chunkLength)
+      remaining = remaining.drop(chunkLength)
+    }
+    isComplete = true
+  }
+
+  val markdownOptions = remember(isComplete) {
+    RichTextRenderOptions(
+      animate = !isComplete,
+      textFadeInMs = 500,
+      delayMs = 70,
+      debounceMs = 200,
+    )
+  }
+
+  RichText {
+    Markdown(
+      currentText,
+      richtextRenderOptions = markdownOptions,
+    )
+  }
+}
+
 private const val SampleText = """
 1-The quick brown fox jumps over the lazy dog.
 1-The quick brown fox jumps over the lazy dog.
@@ -257,4 +387,96 @@ fun greet(name: String) {
 > 引用的第二行也不含标点我们想观察整个引用是否可以被完整显示
 
 结尾的大段落再次没有标点我们仍然不断添加文本直到最后在这里加上句号。
+"""
+
+private const val ThaiSampleText = """
+# ย่อหน้าใหญ่และรายการสลับ
+
+ย่อหน้าแรกไม่มีการใช้วรรคตอนเราพิมพ์อย่างต่อเนื่องเพื่อทดสอบการแบ่งวลีในภาษาไทยซึ่งไม่มีช่องว่างระหว่างคำและเรายังอยากรู้ว่าเอฟเฟกต์จะทำงานอย่างไรเมื่อข้อมูลมาถึงทีละน้อยๆและยังคงยืดยาวต่อไปจนกว่าเราจะเลือกขึ้นบรรทัดใหม่
+ย่อหน้านี้ยังไม่หยุดเพราะเราต้องการสร้างสถานการณ์ที่ข้อความยาวมากๆโดยยังไม่มีจุดสิ้นสุดอย่างชัดเจนเพื่อดูว่าการเรนเดอร์จะยังคงทำงานลื่นไหลหรือไม่
+ตอนท้ายของย่อหน้าจึงยังคงไม่มีจุดเพื่อให้มันดูเหมือนวลีที่ไม่มีวันจบ
+
+* **รายการตัวหนา ๑** ใช้ทดสอบการแสดงผลของรายการพร้อมตัวหนาและไม่มีวรรคตอน
+* **รายการตัวหนา ๒** ยังคงต่อเนื่องโดยไม่มีจุดและเพิ่มความยาวของประโยค
+* **รายการตัวหนา ๓** ยาวมากแบบไม่มีการหยุดพักเพื่อดูว่ามันจะถูกตัดอย่างไร
+  * **รายการย่อยตัวหนา** รายการในระดับย่อยก็ยังไม่มีวรรคตอนเหมือนกัน
+
+ย่อหน้าที่สองเพิ่มทั้งประโยคที่มีวรรคตอนและไม่มีวรรคตอนเพื่อผสมผสานทั้งสองรูปแบบให้เห็นความแตกต่างของการตัดข้อความ ยังมีบรรทัดหนึ่งที่ไม่มีจุดเพื่อดูว่าการค้างอยู่ตรงท้ายจะอัพเดตหรือไม่
+เรายังคงเขียนยาวไปเรื่อยๆโดยไม่มีช่วงหยุดเพื่อให้ย่อหน้านี้นานมากและดูว่าค่า debounce จะมีผลแค่ไหน
+
+1. *รายการเอียง* รวม`โค้ดสั้นๆ`และ[ลิงก์](https://example.com)ไว้ในบรรทัดเดียว
+2. ~~รายการขีดฆ่า~~ รวมทั้ง**ตัวหนา**และ*ตัวเอียง*พร้อมกับข้อความยาวที่ยังไม่มีจุด
+3. รายการผสม **ตัวหนา** *เอียง* `โค้ด` [ลิงก์](https://example.com) และไม่มีวรรคตอนเพื่อทดสอบการเคลื่อนไหว
+   1. รายการย่อยผสม **ตัวหนา** ที่ไม่มีวรรคตอน
+   2. รายการย่อยผสมที่สองมี`โค้ด`และ*เอียง*และยังคงไม่มีจุดท้ายบรรทัด
+
+ย่อหน้าที่สามยังยาวมากเพื่อให้เห็นการเรนเดอร์ต่อเนื่องเราจะไม่ใส่ช่องว่างหรือจุดจบใดๆจนกว่าจะถึงตอนท้ายสุดเพื่อทำให้เกิดสถานการณ์ที่ยาวที่สุดเท่าที่จะเป็นไปได้
+เราใส่ข้อความอีกหลายประโยคติดกันเพื่อให้มันยาวมากขึ้นและยังไม่มีการเว้นวรรคหรือเครื่องหมายใดๆเพื่อเน้นปัญหาที่อาจเกิดขึ้น
+
+- รายการสไตล์หนึ่ง **ตัวหนา** *เอียง* อยู่ในบรรทัดเดียวเพื่อให้การเรนเดอร์ซับซ้อนขึ้น
+- รายการสไตล์สอง `โค้ด` [ลิงก์](https://example.com) และ~~ขีดฆ่า~~รวมกันในบรรทัดเดียว
+- รายการสไตล์สาม ไม่มีวรรคตอนและยืดยาวมากเพื่อดูว่าการแบ่งวลีทำงานหรือไม่
+
+ย่อหน้าสุดท้ายก่อนโค้ดบอกว่าด้านล่างจะมีบล็อกโค้ดและตารางแล้วเราก็พิมพ์ยาวอีกเล็กน้อยก่อนจะหยุด
+```kotlin
+fun greet(name: String) {
+    println("สวัสดี name")
+}
+```
+
+| คอลัมน์ก | คอลัมน์ข |
+|-----------|-----------|
+| เนื้อหาก | เนื้อหาข |
+| เนื้อหาที่ยาวมากกก | เนื้อหาที่ยาวกว่ายาวเพื่อทดสอบตาราง |
+
+> ปิดท้ายด้วยบล็อกอ้างอิงที่มี **ตัวหนา** *ตัวเอียง* และ `โค้ด` ต่อเนื่องไปอีกนิดเพื่อให้มันยาวพอ
+> บรรทัดต่อจากนั้นของอ้างอิงก็ยังไม่มีวรรคตอนเพื่อดูว่าจะแสดงครบหรือไม่
+
+ประโยคสุดท้ายของไฟล์ตัวอย่างนี้จะมีจุดอยู่ตรงนี้.
+"""
+
+private const val HindiSampleText = """
+# लंबे परिच्छेद और सूचियाँ
+
+पहला परिच्छेद बिना किसी विरामचिह्न के लगातार चलता रहता हैहम बिना रुके लगातार लिखते जा रहे हैं ताकि देखा जा सके कि हिंदी में जहां शब्दों के बीच अक्सर स्पेस नहीं होता है वहां एनीमेशन किस तरह प्रतिक्रिया करता हैऔर हम निर्णय लेने तक इसे इसी तरह बढ़ाते रहते हैं
+दूसरा वाक्य भी बिना किसी पूर्ण विराम के जारी है जिससे यह एक लंबा वाक्य बनता जाए और एनीमेशन को मजबूर करे कि वह इसे एक ही वाक्यांश की तरह संभाले
+यह अंत तक बिना विराम के चलता है ताकि हम देख सकें कि अंतिम हिस्से को कैसे प्रस्तुत किया जाएगा
+
+* **मोटे अक्षरों वाला आइटम १** यह पंक्ति सूची में बोल्ड टेक्स्ट के साथ है और कोई विरामचिह्न नहीं है
+* **मोटे अक्षरों वाला आइटम २** यहाँ भी पूर्ण विराम नहीं है और वाक्य को लंबा किया गया है
+* **मोटे अक्षरों वाला आइटम ३** बहुत लंबा वाक्य है जो अंत तक किसी विराम के बिना जारी रहता है
+  * **मोटा उप-आइटम** उप सूची भी बिना विराम के रहती है ताकि नेस्टिंग का परीक्षण हो सके
+
+दूसरे परिच्छेद में हम कुछ वाक्यों में पूर्ण विराम जोड़ते हैं, कुछ में नहीं, ताकि दोनों स्थितियों को एक साथ देखा जा सके। अंत में एक पंक्ति बिना विराम के रखी गई है ताकि पता चले कि वह कब रेंडर होती है
+हम इस पैराग्राफ को भी लंबा करते जाते हैं ताकि यह सुनिश्चित कर सकें कि डिले के दौरान भी सब कुछ ठीक काम करे
+
+1. *तिरछा आइटम* जिसमें `कोड` और [लिंक](https://example.com) एक ही पंक्ति में हों
+2. ~~कटा हुआ आइटम~~ जिसमें **मोटे अक्षर** और *तिरछे अक्षर* दोनों हैं और कोई पूर्ण विराम नहीं है
+3. मिश्रित आइटम **मोटा** *तिरछा* `कोड` [लिंक](https://example.com) सब कुछ शामिल करता है और फिर भी वाक्य समाप्त नहीं करता
+   1. उप आइटम एक **मोटे अक्षर** वाला और बिना विराम के
+   2. उप आइटम दो जिसमें `कोड` और *तिरछे अक्षर* हैं और फिर भी यह लंबा चलता है
+
+तीसरा परिच्छेद फिर से बहुत लंबा है हम बिना रुके लिखते चले जाते हैं ताकि यह देखा जा सके कि बिना किसी विरामचिह्न के लंबे हिस्से के साथ एनीमेशन कैसा काम करता है और कब वह समाप्ति मानता है
+हम और भी शब्द जोड़ते जाते हैं ताकि पैराग्राफ भारी हो जाए लेकिन अभी भी कोई पूर्ण विराम या अन्य चिन्ह नहीं लगाया जाता
+
+- सूची शैली एक **बोल्ड** *तिरछा* और अन्य सजावट एक ही पंक्ति में रखती है
+- सूची शैली दो `कोड` [लिंक](https://example.com) और~~कटा हुआ~~ को मिलाकर लंबी पंक्ति बनाती है
+- सूची शैली तीन बिना विराम के लगातार विस्तार करती जाती है ताकि देखें कि विभाजन कहाँ होता है
+
+इसके बाद हम कोड ब्लॉक और तालिका दिखाने से पहले एक और लंबा वाक्य लिखते हैं ताकि संदर्भ पूरा हो
+```kotlin
+fun greet(name: String) {
+    println("नमस्ते name")
+}
+```
+
+| स्तम्भ क | स्तम्भ ख |
+|----------|----------|
+| सामग्री क | सामग्री ख |
+| बहुत लंबी सामग्री | उससे भी लंबी सामग्री जो तालिका की चौड़ाई की परीक्षा ले |
+
+> अंत में एक उद्धरण ब्लॉक है जिसमें **मोटे अक्षर** *तिरछे अक्षर* और `कोड` शामिल है और इसे थोड़ा लंबा किया गया है ताकि प्रभाव स्पष्ट हो
+> उद्धरण की अगली पंक्ति में भी कोई विरामचिह्न नहीं है ताकि यह देखा जा सके कि वह अंत तक प्रदर्शित होती है या नहीं
+
+अंतिम वाक्य आखिरकार यहाँ समाप्त हो जाता है।
 """
