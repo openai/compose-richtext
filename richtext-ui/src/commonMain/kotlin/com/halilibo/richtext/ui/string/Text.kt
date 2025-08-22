@@ -34,12 +34,8 @@ import com.halilibo.richtext.ui.Text
 import com.halilibo.richtext.ui.currentContentColor
 import com.halilibo.richtext.ui.currentRichTextStyle
 import com.halilibo.richtext.ui.string.RichTextString.Format
-import com.halilibo.richtext.ui.util.PhraseAnnotatedString
-import com.halilibo.richtext.ui.util.segmentIntoPhrases
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.pow
-import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Renders a [RichTextString] as created with [richTextString].
@@ -52,7 +48,6 @@ public fun RichTextScope.Text(
   modifier: Modifier = Modifier,
   onTextLayout: (TextLayoutResult) -> Unit = {},
   softWrap: Boolean = true,
-  isLeafText: Boolean = true,
   renderOptions: RichTextRenderOptions = RichTextRenderOptions(),
   sharedAnimationState: MarkdownAnimationState = remember { MarkdownAnimationState() },
   overflow: TextOverflow = TextOverflow.Clip,
@@ -71,7 +66,6 @@ public fun RichTextScope.Text(
       annotated = annotated,
       contentColor = contentColor,
       renderOptions = renderOptions,
-      isLeafText = isLeafText,
       sharedAnimationState = sharedAnimationState,
     )
   } else {
@@ -147,80 +141,49 @@ private fun rememberAnimatedText(
   renderOptions: RichTextRenderOptions,
   contentColor: Color,
   sharedAnimationState: MarkdownAnimationState,
-  isLeafText: Boolean,
 ): AnnotatedString {
   val coroutineScope = rememberCoroutineScope()
   val animations = remember { mutableStateMapOf<Int, TextAnimation>() }
   val textToRender = remember { mutableStateOf(AnnotatedString("")) }
+  val lastText = remember { mutableStateOf(AnnotatedString("")) }
 
-  val lastAnimationIndex = remember { mutableIntStateOf(-1) }
-  val lastPhrases = remember { mutableStateOf(PhraseAnnotatedString()) }
-  val updatePhrases = { phrases: PhraseAnnotatedString ->
-    lastPhrases.value = phrases
-    textToRender.value = phrases.makeCompletePhraseString(!isLeafText)
-    phrases.phraseSegments
-      .filter { it > lastAnimationIndex.value }
-      .forEach { phraseIndex ->
-        val animation = TextAnimation(phraseIndex)
-        animations[phraseIndex] = animation
-        lastAnimationIndex.value = phraseIndex
-        coroutineScope.launch {
-          sharedAnimationState.addAnimation(renderOptions)
-          var hasAnimationFired = false
-          animate(
-            initialValue = 0f,
-            targetValue = 1f,
-            animationSpec = tween(
-              durationMillis = renderOptions.textFadeInMs,
-              delayMillis = sharedAnimationState.toDelayMs(),
-            )
-          ) { value, _ ->
-            animation.alpha = value
-            if (!hasAnimationFired) {
-              renderOptions.onPhraseAnimate()
-              hasAnimationFired = true
-            } else {
-              renderOptions.onTextAnimate()
-            }
-          }
-          // Remove animation right away, in case it had split at an inappropriate unicode point.
-          animations.remove(phraseIndex)
+  fun updateText(newText: AnnotatedString) {
+    val currentText = lastText.value
+    if (newText.text == currentText.text) return
+    val startIndex = commonPrefixLength(currentText.text, newText.text)
+    lastText.value = newText
+    textToRender.value = newText
+    animations.clear()
+    val animation = TextAnimation(startIndex)
+    animations[startIndex] = animation
+    coroutineScope.launch {
+      sharedAnimationState.addAnimation(renderOptions)
+      var hasAnimationFired = false
+      animate(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = tween(
+          durationMillis = renderOptions.textFadeInMs,
+          delayMillis = sharedAnimationState.toDelayMs(),
+        )
+      ) { value, _ ->
+        animation.alpha = value
+        if (!hasAnimationFired) {
+          renderOptions.onTextAnimate()
+          hasAnimationFired = true
         }
       }
-  }
-  LaunchedEffect(isLeafText, annotated) {
-    val isComplete = !isLeafText
-    // If we detect a new phrase, kick off the animation now.
-    val phrases = annotated.segmentIntoPhrases(renderOptions, isComplete = isComplete)
-    if (isComplete && phrases == lastPhrases.value) return@LaunchedEffect
-    if (!isComplete && !phrases.hasNewPhrasesFrom(lastPhrases.value)) return@LaunchedEffect
-    updatePhrases(phrases)
-
-    if (!isComplete) {
-      // In case no changes happen for a while, we'll render after some timeout
-      delay(renderOptions.debounceMs.milliseconds)
-      if (annotated.text.isNotEmpty()) {
-        val debouncedPhrases = annotated.segmentIntoPhrases(renderOptions, isComplete = true)
-        if (debouncedPhrases != lastPhrases.value) {
-          updatePhrases(debouncedPhrases)
-        }
-      }
+      animations.remove(startIndex)
     }
   }
 
-  // contentColor rarely changes, and it's not already a State. When contentColor changes, a new
-  // AnnotatedString must be created using the updated contentColor value.
+  LaunchedEffect(annotated) {
+    updateText(annotated)
+  }
+
   return remember(contentColor) {
-    // textToRender and the set of animations are tracked as States, and trigger the derivedStateOf
-    // to return a new value in order to create a new AnnotatedString with the latest text and
-    // animated Brushes.
-    // This will only return a new value if the actual text changes, or the *set* of animated spans
-    // has changed.
-    // When a span gets a new animated value, the AnnotatedString will not be updated. Instead,
-    // the text will just be re-drawn, since the animated alpha state was read only inside
-    // DynamicSolidColor during the draw phase.
     derivedStateOf {
-      textToRender.value.withDynamicColorPhrases(contentColor, animations.values)
+      textToRender.value.withAnimatedSegments(contentColor, animations.values)
     }
   }.value
 }
@@ -230,7 +193,7 @@ private class TextAnimation(val startIndex: Int) {
   var alpha by mutableFloatStateOf(0f)
 }
 
-private fun AnnotatedString.withDynamicColorPhrases(
+private fun AnnotatedString.withAnimatedSegments(
   contentColor: Color, animations: Collection<TextAnimation>,
 ): AnnotatedString {
   if (text.isEmpty() || animations.isEmpty()) {
@@ -245,7 +208,7 @@ private fun AnnotatedString.withDynamicColorPhrases(
     remainingLength = animation.startIndex
   }
   return buildAnnotatedString {
-    append(this@withDynamicColorPhrases, start = 0, end = remainingLength)
+    append(this@withAnimatedSegments, start = 0, end = remainingLength)
     modifiedTextSnippets.reversed().forEach { append(it) }
   }
 }
@@ -257,6 +220,14 @@ private fun AnnotatedString.withDynamicColor(color: Color, alpha: () -> Float): 
   val fullStyle =
     AnnotatedString.Range(SpanStyle(brush = DynamicSolidColor(color, alpha)), 0, length)
   return AnnotatedString(text, subStyles + fullStyle)
+}
+
+private fun commonPrefixLength(a: String, b: String): Int {
+  val length = minOf(a.length, b.length)
+  for (i in 0 until length) {
+    if (a[i] != b[i]) return i
+  }
+  return length
 }
 
 private fun AnnotatedString.getConsumableAnnotations(

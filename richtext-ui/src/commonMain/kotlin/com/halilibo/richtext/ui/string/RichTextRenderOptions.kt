@@ -9,10 +9,7 @@ public data class RichTextRenderOptions(
   val debounceMs: Int = 100050,
   val delayMs: Int = 70,
   val delayExponent: Double = 0.7,
-  val maxPhraseLength: Int = 30,
-  val phraseMarkersOverride: List<Char>? = null,
   val onTextAnimate: () -> Unit = {},
-  val onPhraseAnimate: () -> Unit = {},
 ) {
   public companion object {
     public val Default: RichTextRenderOptions = RichTextRenderOptions()

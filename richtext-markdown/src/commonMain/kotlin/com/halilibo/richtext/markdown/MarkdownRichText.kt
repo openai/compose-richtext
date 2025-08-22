@@ -74,7 +74,6 @@ internal fun RichTextScope.MarkdownRichText(
   Text(
     text = richText,
     modifier = modifier,
-    isLeafText = astNode.links.next == null && astNode.links.parent?.links?.next == null,
     renderOptions = richTextRenderOptions,
     sharedAnimationState = markdownAnimationState,
   )
