@@ -41,6 +41,7 @@ private val Samples = listOf<Pair<String, @Composable () -> Unit>>(
   "Printable Document" to @Composable { DocumentSample() },
   "Slideshow" to @Composable { SlideshowSample() },
   "Text Animation" to @Composable { AnimatedRichTextSample() },
+  "Chinese Text Animation" to @Composable { ChineseAnimatedRichTextSample() },
 )
 
 @Preview(showBackground = true)
