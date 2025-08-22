@@ -14,12 +14,10 @@ import com.halilibo.richtext.ui.string.RichTextRenderOptions
 internal fun rememberMarkdownFade(
   richTextRenderOptions: RichTextRenderOptions,
   markdownAnimationState: MarkdownAnimationState,
+  enqueue: Boolean = false,
 ): State<Float> {
   val targetAlpha = remember {
     mutableFloatStateOf(if (richTextRenderOptions.animate) 0f else 1f)
-  }
-  LaunchedEffect(Unit) {
-    targetAlpha.value = 1f
   }
   val alpha = animateFloatAsState(
     targetAlpha.value,
@@ -29,7 +27,10 @@ internal fun rememberMarkdownFade(
     )
   )
   LaunchedEffect(Unit) {
-    markdownAnimationState.addAnimation(richTextRenderOptions)
+    if (enqueue) {
+      markdownAnimationState.addAnimation(richTextRenderOptions)
+    }
+    targetAlpha.value = 1f
   }
   return alpha
 }
