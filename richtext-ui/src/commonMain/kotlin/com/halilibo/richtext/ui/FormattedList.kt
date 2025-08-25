@@ -221,7 +221,7 @@ private val LocalListLevel = compositionLocalOf { 0 }
     itemSpacing = itemSpacing,
     prefixPadding = PaddingValues(start = markerIndent, end = contentsIndent),
     prefixForIndex = { index ->
-      val alpha = rememberMarkdownFade(richTextRenderOptions, markdownAnimationState, index)
+      val alpha = rememberMarkdownFade(richTextRenderOptions, markdownAnimationState)
       Box(modifier = Modifier.graphicsLayer { this.alpha = alpha.value }) {
         when (listType) {
           Ordered -> listStyle.orderedMarkers!!().drawMarker(currentLevel, startIndex + index)

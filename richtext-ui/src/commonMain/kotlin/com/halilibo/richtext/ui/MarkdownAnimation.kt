@@ -19,7 +19,6 @@ import kotlin.time.Duration.Companion.milliseconds
 internal fun rememberMarkdownFade(
   richTextRenderOptions: RichTextRenderOptions,
   markdownAnimationState: MarkdownAnimationState,
-  childIndex: Int = 0,
 ): State<Float> {
   val coroutineScope = rememberCoroutineScope()
   val targetAlpha = remember {
@@ -28,7 +27,8 @@ internal fun rememberMarkdownFade(
   LaunchedEffect(Unit) {
     if (richTextRenderOptions.animate) {
       coroutineScope.launch {
-        delay(markdownAnimationState.predictDelayForOffset(childIndex, richTextRenderOptions).milliseconds)
+        markdownAnimationState.addAnimation(richTextRenderOptions)
+        delay(markdownAnimationState.toDelayMs().milliseconds)
         targetAlpha.animateTo(
           1f,
           tween(

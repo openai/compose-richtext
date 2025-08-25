@@ -118,10 +118,10 @@ public class MarkdownAnimationState {
   private var lastAnimationStartMs by mutableLongStateOf(0L)
 
   public fun addAnimation(renderOptions: RichTextRenderOptions) {
-    lastAnimationStartMs = calculatedDelay(lastAnimationStartMs, renderOptions) + System.currentTimeMillis()
+    lastAnimationStartMs = calculatedDelay(renderOptions) + System.currentTimeMillis()
   }
 
-  private fun calculatedDelay(lastAnimationStartMs: Long, renderOptions: RichTextRenderOptions): Long {
+  private fun calculatedDelay(renderOptions: RichTextRenderOptions): Long {
     val now = System.currentTimeMillis()
     val diffMs = lastAnimationStartMs - now
 
@@ -133,14 +133,6 @@ public class MarkdownAnimationState {
         renderOptions.delayExponent
       )).toLong()
     }
-  }
-
-  public fun predictDelayForOffset(offset: Int, renderOptions: RichTextRenderOptions): Int {
-    var calculatedStartMs = lastAnimationStartMs
-    for (i in 0 until offset * 3) {
-      calculatedStartMs = calculatedDelay(calculatedStartMs, renderOptions) + System.currentTimeMillis()
-    }
-    return (calculatedStartMs - System.currentTimeMillis()).coerceAtLeast(0).toInt()
   }
 
   public fun toDelayMs(): Int =
