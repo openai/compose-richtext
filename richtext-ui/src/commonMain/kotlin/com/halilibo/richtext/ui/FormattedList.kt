@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.paint
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
@@ -221,7 +222,7 @@ private val LocalListLevel = compositionLocalOf { 0 }
     prefixPadding = PaddingValues(start = markerIndent, end = contentsIndent),
     prefixForIndex = { index ->
       val alpha = rememberMarkdownFade(richTextRenderOptions, markdownAnimationState)
-      Box(modifier = Modifier.alpha(alpha.value)) {
+      Box(modifier = Modifier.graphicsLayer { this.alpha = alpha.value }) {
         when (listType) {
           Ordered -> listStyle.orderedMarkers!!().drawMarker(currentLevel, startIndex + index)
           Unordered -> listStyle.unorderedMarkers!!().drawMarker(currentLevel)

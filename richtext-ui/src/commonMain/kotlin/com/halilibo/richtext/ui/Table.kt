@@ -14,6 +14,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -188,7 +189,7 @@ public fun RichTextScope.Table(
     }
   }
 
-  val baseModifier = modifier.alpha(alpha.value)
+  val baseModifier = modifier.graphicsLayer { this.alpha = alpha.value }
   val tableModifier = if (columnArrangement is Adaptive) {
     baseModifier.horizontalScroll(rememberScrollState())
   } else {

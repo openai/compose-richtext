@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -81,7 +82,7 @@ public interface BlockQuoteGutter {
   }
 
   val alpha = rememberMarkdownFade(richTextRenderOptions, markdownAnimationState)
-  Layout(modifier = Modifier.alpha(alpha.value), content = {
+  Layout(modifier = Modifier.graphicsLayer { this.alpha = alpha.value }, content = {
     with(gutter) { drawGutter() }
     BasicRichText(
       modifier = Modifier.padding(top = spacing, bottom = spacing),
