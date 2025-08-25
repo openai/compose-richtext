@@ -1,5 +1,6 @@
 package com.halilibo.richtext.ui
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
@@ -18,25 +19,24 @@ import kotlin.time.Duration.Companion.milliseconds
 internal fun rememberMarkdownFade(
   richTextRenderOptions: RichTextRenderOptions,
   markdownAnimationState: MarkdownAnimationState,
+  childIndex: Int = 0,
 ): State<Float> {
   val coroutineScope = rememberCoroutineScope()
   val targetAlpha = remember {
-    mutableFloatStateOf(if (richTextRenderOptions.animate) 0f else 1f)
+    Animatable(if (richTextRenderOptions.animate) 0f else 1f)
   }
   LaunchedEffect(Unit) {
     if (richTextRenderOptions.animate) {
       coroutineScope.launch {
-        markdownAnimationState.addAnimation(richTextRenderOptions)
-        delay(markdownAnimationState.toDelayMs().milliseconds)
-        targetAlpha.floatValue = 1f
+        delay(markdownAnimationState.predictDelayForOffset(childIndex, richTextRenderOptions).milliseconds)
+        targetAlpha.animateTo(
+          1f,
+          tween(
+            durationMillis = richTextRenderOptions.textFadeInMs,
+          )
+        )
       }
     }
   }
-  val alpha = animateFloatAsState(
-    targetAlpha.floatValue,
-    tween(
-      durationMillis = richTextRenderOptions.textFadeInMs,
-    )
-  )
-  return alpha
+  return targetAlpha.asState()
 }

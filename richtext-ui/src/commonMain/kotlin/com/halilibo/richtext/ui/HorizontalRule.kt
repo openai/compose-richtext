@@ -11,6 +11,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -48,7 +49,7 @@ internal fun HorizontalRuleStyle.resolveDefaults() = HorizontalRuleStyle(
   val alpha = rememberMarkdownFade(richTextRenderOptions, markdownAnimationState)
   Box(
     Modifier
-      .alpha(alpha.value)
+      .graphicsLayer{ this.alpha = alpha.value }
       .padding(top = spacing, bottom = spacing)
       .fillMaxWidth()
       .height(1.dp)

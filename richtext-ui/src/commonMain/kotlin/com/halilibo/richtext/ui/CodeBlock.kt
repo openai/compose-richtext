@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
@@ -100,7 +101,7 @@ internal fun CodeBlockStyle.resolveDefaults() = CodeBlockStyle(
   ) { layoutModifier ->
     Box(
       modifier = layoutModifier
-        .alpha(alpha.value)
+        .graphicsLayer{ this.alpha = alpha.value }
         .then(modifier)
         .padding(blockPadding)
     ) {
