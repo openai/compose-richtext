@@ -361,6 +361,9 @@ public class RichTextString internal constructor(
   public class Builder(capacity: Int = 16) {
     private val builder = AnnotatedString.Builder(capacity)
     private val formatObjects = mutableMapOf<String, Any>()
+    // Tracks formats pushed via pushFormat along with the underlying builder index,
+    // so we can compute the current SpanStyle without materializing an AnnotatedString.
+    private val activeFormatStack = mutableListOf<Pair<Int, Format>>()
 
     public fun addFormat(
       format: Format,
@@ -373,12 +376,27 @@ public class RichTextString internal constructor(
 
     public fun pushFormat(format: Format): Int {
       val tag = format.registerTag(formatObjects)
-      return builder.pushStringAnnotation(FormatAnnotationScope, tag)
+      val idx = builder.pushStringAnnotation(FormatAnnotationScope, tag)
+      activeFormatStack.add(idx to format)
+      return idx
     }
 
-    public fun pop(): Unit = builder.pop()
+    public fun pop(): Unit {
+      builder.pop()
+      if (activeFormatStack.isNotEmpty()) activeFormatStack.removeAt(activeFormatStack.lastIndex)
+    }
 
-    public fun pop(index: Int): Unit = builder.pop(index)
+    public fun pop(index: Int): Unit {
+      builder.pop(index)
+
+      if (activeFormatStack.isNotEmpty()) {
+        var i = activeFormatStack.lastIndex
+        while (i >= 0 && activeFormatStack[i].first >= index) {
+          activeFormatStack.removeAt(i)
+          i--
+        }
+      }
+    }
 
     public fun append(text: String): Unit = builder.append(text)
 
@@ -412,35 +430,20 @@ public class RichTextString internal constructor(
      * Returns the [SpanStyle] that would currently apply to newly appended text, based on
      * the formats that are pushed (but not yet popped) on this builder.
      *
-     * This mirrors how [toAnnotatedString] resolves format annotations into concrete styles.
-     * Only formats added via [pushFormat]/[addFormat] are considered; any direct operations
-     * performed via [withAnnotatedString] are not reflected in the result.
+     * Only formats added via [pushFormat] are considered; any direct operations performed
+     * via [withAnnotatedString] or [addFormat] are not reflected in the result by design.
      */
     public fun getCurrentSpanStyle(
       style: RichTextStringStyle,
       contentColor: Color
     ): SpanStyle {
       val resolvedStyle = style.resolveDefaults()
-      // Build a snapshot so that any currently-open annotations are closed at the current length.
-      val snapshot = builder.toAnnotatedString()
-      val length = snapshot.length
-
-      // Collect format annotations that are active at the end of the string.
-      val activeFormats = snapshot
-        .getStringAnnotations(FormatAnnotationScope, 0, length)
-        .asSequence()
-        .filter { it.end == length }
-        .mapNotNull { range ->
-          Format.findTag(range.item, formatObjects)
-        }
-
-      // Merge their SpanStyles, ignoring non-SpanStyle annotations (e.g., links).
       var current = SpanStyle()
-      for (format in activeFormats) {
+      // Only consider formats that are currently pushed (and not yet popped).
+      // Ignore formats added via addFormat, by design.
+      for ((_, format) in activeFormatStack) {
         val annotation = format.getAnnotation(resolvedStyle, contentColor)
-        if (annotation is SpanStyle) {
-          current = current.merge(annotation)
-        }
+        if (annotation is SpanStyle) current = current.merge(annotation)
       }
       return current
     }
