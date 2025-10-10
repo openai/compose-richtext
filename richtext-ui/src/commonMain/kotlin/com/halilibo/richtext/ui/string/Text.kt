@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.LinearGradientShader
 import androidx.compose.ui.graphics.Shader
 import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -260,12 +261,66 @@ private fun AnnotatedString.withDynamicColorPhrases(
 }
 
 private fun AnnotatedString.withDynamicColor(color: Color, alpha: () -> Float): AnnotatedString {
+  val useDynamicColor = !maybeContainsEmojis()
+
   val subStyles = spanStyles.map {
-    it.copy(item = it.item.copy(brush = DynamicSolidColor(it.item.color, alpha)))
+    val style = it.item
+    if (useDynamicColor) {
+      it.copy(item = style.copy(brush = DynamicSolidColor(style.color) { style.alpha * alpha() }))
+    } else if (style.color.isSpecified) {
+      it.copy(item = style.copy(color = style.color.copy(alpha = style.color.alpha * alpha())))
+    } else {
+      it.copy(item = style.copy(brush = style.brush, alpha = alpha()))
+    }
   }
-  val fullStyle =
-    AnnotatedString.Range(SpanStyle(brush = DynamicSolidColor(color, alpha)), 0, length)
+  val fullStyle = AnnotatedString.Range(
+    item = if (useDynamicColor) {
+      SpanStyle(brush = DynamicSolidColor(color, alpha))
+    } else {
+      SpanStyle(brush = DynamicSolidColor(color) { 1f }, alpha = alpha())
+    },
+    start = 0,
+    end = length
+  )
   return AnnotatedString(text, subStyles + fullStyle)
+}
+
+private fun CharSequence.maybeContainsEmojis(): Boolean {
+  var i = 0
+  val n = length
+  while (i < n) {
+    val cp = Character.codePointAt(this, i)
+
+    // --- Quick accepts: common emoji blocks ---
+    val isEmoji = when (cp) {
+      // Misc Symbols + Dingbats + arrows subset that often render as emoji
+      in 0x2600..0x27BF -> true
+      // Enclosed CJK (e.g., 🈶, 🈚)
+      in 0x1F200..0x1F2FF -> true
+      // Misc Symbols & Pictographs
+      in 0x1F300..0x1F5FF -> true
+      // Emoticons
+      in 0x1F600..0x1F64F -> true
+      // Transport & Map
+      in 0x1F680..0x1F6FF -> true
+      // Supplemental Symbols & Pictographs
+      in 0x1F900..0x1F9FF -> true
+      // Symbols & Pictographs Extended-A (newer emoji live here)
+      in 0x1FA70..0x1FAFF -> true
+      // Regional indicators (flags as pairs, but single is enough for "contains")
+      in 0x1F1E6..0x1F1FF -> true
+      // Keycap base digits/#/* (paired with VS16 + COMBINING ENCLOSING KEYCAP, but base char is fine)
+      in 0x0030..0x0039, 0x0023, 0x002A -> true
+      // Variation Selector-16 forces emoji presentation for some BMP symbols
+      0xFE0F -> true
+      else -> false
+    }
+
+    if (isEmoji) return true
+
+    i += Character.charCount(cp)
+  }
+  return false
 }
 
 private fun AnnotatedString.getConsumableAnnotations(
