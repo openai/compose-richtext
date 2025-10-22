@@ -7,7 +7,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import kotlinx.coroutines.Dispatchers
@@ -18,18 +17,24 @@ import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.Base64
 import javax.imageio.ImageIO
 
 @Composable
-internal actual fun RemoteImage(
+internal actual fun MarkdownImage(
   url: String,
   contentDescription: String?,
   modifier: Modifier,
   contentScale: ContentScale
 ) {
   val image by produceState<ImageBitmap?>(null, url) {
-    loadFullImage(url)?.let {
-      value = makeFromEncoded(toByteArray(it)).toComposeImageBitmap()
+    if (url.startsWith("data:image") && url.contains("base64")) {
+      val base64ImageString = url.substringAfter("base64,")
+      value = makeFromEncoded(Base64.getDecoder().decode(base64ImageString)).toComposeImageBitmap()
+    } else {
+      loadFullImage(url)?.let {
+        value = makeFromEncoded(toByteArray(it)).toComposeImageBitmap()
+      }
     }
   }
 
