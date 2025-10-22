@@ -1,3 +1,8 @@
+import AndroidConfiguration.compileSdk
+import AndroidConfiguration.minSdk
+import AndroidConfiguration.targetSdk
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
   id("com.android.library")
   kotlin("multiplatform")
@@ -12,17 +17,17 @@ repositories {
 
 kotlin {
   jvm()
-  android {
+  androidTarget {
     publishLibraryVariants("release")
-    compilations.all {
-      kotlinOptions.jvmTarget = "11"
+    compilerOptions {
+      jvmTarget.set(JvmTarget.JVM_11)
     }
   }
   explicitApi()
 }
 
 android {
-  compileSdk = 34
+  compileSdk = 36
   sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
 
   compileOptions {

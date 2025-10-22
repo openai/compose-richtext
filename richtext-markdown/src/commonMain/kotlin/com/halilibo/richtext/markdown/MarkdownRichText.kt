@@ -119,7 +119,7 @@ private fun RichTextScope.computeRichTextString(
               IntSize(128.dp.roundToPx(), 128.dp.roundToPx())
             }
           ) {
-            RemoteImage(
+            MarkdownImage(
               url = currentNodeType.destination,
               contentDescription = currentNodeType.title,
               modifier = Modifier.fillMaxWidth(),
