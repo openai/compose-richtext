@@ -45,6 +45,7 @@ import com.halilibo.richtext.ui.util.segmentIntoPhrases
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.pow
+import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
