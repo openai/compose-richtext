@@ -28,7 +28,7 @@ public data class RichTextDecorations(
 public data class LinkInlineContent(
   val leading: InlineIconSpec? = null,
   val trailing: InlineIconSpec? = null,
-  val spacing: Dp = 4.dp,
+  val spacing: Dp = 2.dp,
   val includeInHitTarget: Boolean = true,
 )
 
@@ -57,7 +57,7 @@ public sealed class InlineIconSpec(
   )
 
   public companion object {
-    public val DefaultSize: DpSize = DpSize(16.dp, 16.dp)
+    public val DefaultSize: DpSize = DpSize(24.dp, 24.dp)
     public val DefaultPlaceholderVerticalAlign: PlaceholderVerticalAlign =
       PlaceholderVerticalAlign.Center
   }
