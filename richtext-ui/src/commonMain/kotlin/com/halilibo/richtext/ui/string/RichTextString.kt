@@ -172,7 +172,8 @@ public class RichTextString internal constructor(
 
   internal fun toAnnotatedString(
     style: RichTextStringStyle,
-    contentColor: Color
+    contentColor: Color,
+    decorations: RichTextDecorations = RichTextDecorations(),
   ): AnnotatedString =
     buildAnnotatedString {
       append(taggedString)
@@ -182,14 +183,35 @@ public class RichTextString internal constructor(
       // And apply their actual SpanStyles to the string.
       tags.forEach { range ->
         val format = Format.findTag(range.item, formatObjects) ?: return@forEach
-        format.getAnnotation(style, contentColor)
-          ?.let { annotation ->
-            if (annotation is SpanStyle) {
-              addStyle(annotation, range.start, range.end)
-            } else if (annotation is LinkAnnotation.Url) {
-              addLink(annotation, range.start, range.end)
+        when (format) {
+          is Format.Link -> {
+            val decoration = decorations.findLinkDecoration(format.destination)
+            val linkStyle = decoration?.linkStyleOverride
+              ?.invoke(style.linkStyle)
+              ?: style.linkStyle
+            val resolvedLinkStyle = when (decoration?.underlineStyle) {
+              null,
+              UnderlineStyle.Solid -> linkStyle
+              else -> linkStyle.withoutUnderline()
             }
+            val linkAnnotation = LinkAnnotation.Url(
+              url = format.destination,
+              styles = resolvedLinkStyle,
+              linkInteractionListener = format.linkInteractionListener,
+            )
+            addLink(linkAnnotation, range.start, range.end)
           }
+          else -> {
+            format.getAnnotation(style, contentColor)
+              ?.let { annotation ->
+                if (annotation is SpanStyle) {
+                  addStyle(annotation, range.start, range.end)
+                } else if (annotation is LinkAnnotation.Url) {
+                  addLink(annotation, range.start, range.end)
+                }
+              }
+          }
+        }
       }
     }
 
@@ -204,6 +226,31 @@ public class RichTextString internal constructor(
           }
       }
       .toMap()
+
+  internal fun decoratedLinkRanges(
+    decorations: RichTextDecorations,
+  ): List<DecoratedLinkRange> {
+    if (decorations.linkDecorations.isEmpty()) return emptyList()
+
+    return taggedString.getStringAnnotations(FormatAnnotationScope, 0, taggedString.length)
+      .asSequence()
+      .mapNotNull { range ->
+        val format = Format.findTag(range.item, formatObjects)
+          as? Format.Link
+          ?: return@mapNotNull null
+        val decoration = decorations.findLinkDecoration(format.destination)
+          ?: return@mapNotNull null
+        if (decoration.underlineStyle is UnderlineStyle.Solid) return@mapNotNull null
+        DecoratedLinkRange(
+          start = range.start,
+          end = range.end,
+          destination = format.destination,
+          underlineStyle = decoration.underlineStyle,
+          linkStyleOverride = decoration.linkStyleOverride,
+        )
+      }
+      .toList()
+  }
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
@@ -305,7 +352,7 @@ public class RichTextString internal constructor(
 
     public class Link(
       public val destination: String,
-      public val linkInteractionListener: LinkInteractionListener? = null
+      public val linkInteractionListener: LinkInteractionListener? = null,
     ) : Format() {
       public override fun getAnnotation(
         richTextStyle: RichTextStringStyle,
@@ -450,4 +497,25 @@ private fun TextLinkStyles.merge(other: TextLinkStyles?): TextLinkStyles {
       pressedStyle = this.style?.merge(other.pressedStyle) ?: other.pressedStyle,
     )
   }
+}
+
+internal data class DecoratedLinkRange(
+  val start: Int,
+  val end: Int,
+  val destination: String,
+  val underlineStyle: UnderlineStyle,
+  val linkStyleOverride: ((TextLinkStyles?) -> TextLinkStyles)?,
+)
+
+private fun RichTextDecorations.findLinkDecoration(destination: String): LinkDecoration? =
+  linkDecorations.firstOrNull { it.matcher(destination) }
+
+private fun TextLinkStyles?.withoutUnderline(): TextLinkStyles? {
+  if (this == null) return null
+  return TextLinkStyles(
+    style = style?.copy(textDecoration = null),
+    focusedStyle = focusedStyle?.copy(textDecoration = null),
+    hoveredStyle = hoveredStyle?.copy(textDecoration = null),
+    pressedStyle = pressedStyle?.copy(textDecoration = null),
+  )
 }

@@ -37,6 +37,7 @@ import com.halilibo.richtext.ui.ListType.Unordered
 import com.halilibo.richtext.ui.RichTextScope
 import com.halilibo.richtext.ui.string.InlineContent
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
+import com.halilibo.richtext.ui.string.RichTextDecorations
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
 import com.halilibo.richtext.ui.string.RichTextRenderOptions.Companion
 import com.halilibo.richtext.ui.string.RichTextString
@@ -80,6 +81,7 @@ public fun RichTextScope.BasicMarkdown(
   contentOverride: ContentOverride? = null,
   inlineContentOverride: InlineContentOverride? = null,
   richTextRenderOptions: RichTextRenderOptions = RichTextRenderOptions.Default,
+  richTextDecorations: RichTextDecorations = RichTextDecorations(),
   astBlockNodeComposer: AstBlockNodeComposer? = null,
 ) {
   RecursiveRenderMarkdownAst(
@@ -87,6 +89,7 @@ public fun RichTextScope.BasicMarkdown(
     contentOverride = contentOverride,
     inlineContentOverride = inlineContentOverride,
     richTextRenderOptions = richTextRenderOptions,
+    richTextDecorations = richTextDecorations,
     markdownAnimationState = remember { MarkdownAnimationState() },
     astNodeComposer = astBlockNodeComposer,
   )
@@ -116,6 +119,7 @@ public interface AstBlockNodeComposer {
     contentOverride: ContentOverride?,
     inlineContentOverride: InlineContentOverride?,
     richTextRenderOptions: RichTextRenderOptions,
+    richTextDecorations: RichTextDecorations,
     markdownAnimationState: MarkdownAnimationState,
     visitChildren: @Composable (AstNode) -> Unit
   )
@@ -152,6 +156,7 @@ internal fun RichTextScope.RecursiveRenderMarkdownAst(
   contentOverride: ContentOverride?,
   inlineContentOverride: InlineContentOverride?,
   richTextRenderOptions: RichTextRenderOptions,
+  richTextDecorations: RichTextDecorations,
   markdownAnimationState: MarkdownAnimationState,
   astNodeComposer: AstBlockNodeComposer?
 ) {
@@ -163,6 +168,7 @@ internal fun RichTextScope.RecursiveRenderMarkdownAst(
         contentOverride,
         inlineContentOverride,
         richTextRenderOptions,
+        richTextDecorations,
         markdownAnimationState,
         astNodeComposer,
       )
@@ -180,6 +186,7 @@ internal fun RichTextScope.RecursiveRenderMarkdownAst(
         contentOverride,
         inlineContentOverride,
         richTextRenderOptions,
+        richTextDecorations,
         markdownAnimationState,
       ) {
         renderChildren(
@@ -187,6 +194,7 @@ internal fun RichTextScope.RecursiveRenderMarkdownAst(
           contentOverride,
           inlineContentOverride = inlineContentOverride,
           richTextRenderOptions = richTextRenderOptions,
+          richTextDecorations = richTextDecorations,
           markdownAnimationState = markdownAnimationState,
           astNodeComposer = astNodeComposer
         )
@@ -199,6 +207,7 @@ internal fun RichTextScope.RecursiveRenderMarkdownAst(
         contentOverride,
         inlineContentOverride = inlineContentOverride,
         richTextRenderOptions = richTextRenderOptions,
+        richTextDecorations = richTextDecorations,
         markdownAnimationState = markdownAnimationState,
         visitChildren = {
           renderChildren(
@@ -206,6 +215,7 @@ internal fun RichTextScope.RecursiveRenderMarkdownAst(
             contentOverride,
             inlineContentOverride = inlineContentOverride,
             richTextRenderOptions = richTextRenderOptions,
+            richTextDecorations = richTextDecorations,
             markdownAnimationState = markdownAnimationState,
             astNodeComposer = astNodeComposer
           )
@@ -224,6 +234,7 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
     contentOverride: ContentOverride?,
     inlineContentOverride: InlineContentOverride?,
     richTextRenderOptions: RichTextRenderOptions,
+    richTextDecorations: RichTextDecorations,
     markdownAnimationState: MarkdownAnimationState,
     visitChildren: @Composable (AstNode) -> Unit
   ) {
@@ -284,6 +295,7 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
             astNode,
             inlineContentOverride,
             richTextRenderOptions,
+            richTextDecorations,
             markdownAnimationState,
             modifier = Modifier.semantics { heading() },
           )
@@ -324,12 +336,19 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
           astNode,
           inlineContentOverride,
           richTextRenderOptions,
+          richTextDecorations,
           markdownAnimationState,
         )
       }
 
       is AstTableRoot -> {
-        RenderTable(astNode, inlineContentOverride, richTextRenderOptions, markdownAnimationState)
+        RenderTable(
+          astNode,
+          inlineContentOverride,
+          richTextRenderOptions,
+          richTextDecorations,
+          markdownAnimationState,
+        )
       }
       // This should almost never happen. All the possible text
       // nodes must be under either Heading, Paragraph or CustomNode
@@ -371,6 +390,7 @@ internal fun RichTextScope.renderChildren(
   contentOverride: ContentOverride?,
   inlineContentOverride: InlineContentOverride?,
   richTextRenderOptions: RichTextRenderOptions,
+  richTextDecorations: RichTextDecorations,
   markdownAnimationState: MarkdownAnimationState,
   astNodeComposer: AstBlockNodeComposer?
 ) {
@@ -380,6 +400,7 @@ internal fun RichTextScope.renderChildren(
       contentOverride = contentOverride,
       inlineContentOverride = inlineContentOverride,
       richTextRenderOptions = richTextRenderOptions,
+      richTextDecorations = richTextDecorations,
       markdownAnimationState = markdownAnimationState,
       astNodeComposer = astNodeComposer,
     )

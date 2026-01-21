@@ -16,20 +16,25 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.LinearGradientShader
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Shader
 import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.dp
 import com.halilibo.richtext.ui.RichTextScope
 import com.halilibo.richtext.ui.Text
 import com.halilibo.richtext.ui.currentContentColor
@@ -56,16 +61,56 @@ public fun RichTextScope.Text(
   isLeafText: Boolean = true,
   renderOptions: RichTextRenderOptions = RichTextRenderOptions(),
   sharedAnimationState: MarkdownAnimationState = remember { MarkdownAnimationState() },
+  decorations: RichTextDecorations = RichTextDecorations(),
   overflow: TextOverflow = TextOverflow.Clip,
-  maxLines: Int = Int.MAX_VALUE
+  maxLines: Int = Int.MAX_VALUE,
 ) {
   val style = currentRichTextStyle.stringStyle
   val contentColor = currentContentColor
-  val annotated = remember(text, style, contentColor) {
-    val resolvedStyle = (style ?: RichTextStringStyle.Default).resolveDefaults()
-    text.toAnnotatedString(resolvedStyle, contentColor)
+  val density = LocalDensity.current
+  val resolvedStyle = remember(style) {
+    (style ?: RichTextStringStyle.Default).resolveDefaults()
+  }
+  val annotated = remember(text, resolvedStyle, contentColor, decorations) {
+    text.toAnnotatedString(resolvedStyle, contentColor, decorations)
   }
   val inlineContents = remember(text) { text.getInlineContents() }
+  val decoratedLinkRanges = remember(text, decorations) {
+    text.decoratedLinkRanges(decorations)
+  }
+  var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+  val underlineSpecs = remember(decoratedLinkRanges, resolvedStyle, contentColor) {
+    decoratedLinkRanges.mapNotNull { range ->
+      val linkStyle = range.linkStyleOverride
+        ?.invoke(resolvedStyle.linkStyle)
+        ?: resolvedStyle.linkStyle
+      val underlineColor = linkStyle?.style?.color
+        ?.takeIf { it.isSpecified }
+        ?: contentColor
+      UnderlineSpec(
+        range = range,
+        color = underlineColor,
+      )
+    }
+  }
+  val underlineModifier = if (underlineSpecs.isNotEmpty()) {
+    Modifier.drawWithContent {
+      drawContent()
+      val layoutResult = textLayoutResult ?: return@drawWithContent
+      underlineSpecs.forEach { spec ->
+        drawUnderline(
+          layoutResult = layoutResult,
+          start = spec.range.start,
+          end = spec.range.end,
+          underlineStyle = spec.range.underlineStyle,
+          color = spec.color,
+          density = density,
+        )
+      }
+    }
+  } else {
+    Modifier
+  }
 
   val animatedText = if (renderOptions.animate && inlineContents.isEmpty()) {
     rememberAnimatedText(
@@ -82,10 +127,14 @@ public fun RichTextScope.Text(
   if (inlineContents.isEmpty()) {
     Text(
       text = animatedText,
-      onTextLayout = onTextLayout,
+      onTextLayout = { layoutResult ->
+        textLayoutResult = layoutResult
+        onTextLayout(layoutResult)
+      },
       softWrap = softWrap,
       overflow = overflow,
-      maxLines = maxLines
+      maxLines = maxLines,
+      modifier = modifier.then(underlineModifier),
     )
   } else {
     val inlineTextConstraints = remember { mutableStateOf(Constraints()) }
@@ -96,12 +145,15 @@ public fun RichTextScope.Text(
 
     Text(
       text = animatedText,
-      onTextLayout = onTextLayout,
+      onTextLayout = { layoutResult ->
+        textLayoutResult = layoutResult
+        onTextLayout(layoutResult)
+      },
       inlineContent = inlineTextContents,
       softWrap = softWrap,
       overflow = overflow,
       maxLines = maxLines,
-      modifier = modifier.layout { measurable, constraints ->
+      modifier = modifier.then(underlineModifier).layout { measurable, constraints ->
         // Prepares the custom constraints InlineTextContents before they get measured.
         inlineTextConstraints.value = constraints.copy(minWidth = 0, minHeight = 0)
         val placeable = measurable.measure(constraints)
@@ -109,6 +161,82 @@ public fun RichTextScope.Text(
           placeable.place(0, 0)
         }
       },
+    )
+  }
+}
+
+private data class UnderlineSpec(
+  val range: DecoratedLinkRange,
+  val color: Color,
+)
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawUnderline(
+  layoutResult: TextLayoutResult,
+  start: Int,
+  end: Int,
+  underlineStyle: UnderlineStyle,
+  color: Color,
+  density: androidx.compose.ui.unit.Density,
+) {
+  val textLength = layoutResult.layoutInput.text.text.length
+  val clampedStart = start.coerceIn(0, textLength)
+  val clampedEnd = end.coerceIn(0, textLength)
+  if (clampedStart >= clampedEnd) return
+
+  val strokeWidthPx: Float
+  val offsetPx: Float
+  val pathEffect: PathEffect?
+  val cap: StrokeCap
+
+  with(density) {
+    when (underlineStyle) {
+      is UnderlineStyle.Solid -> {
+        strokeWidthPx = 1.dp.toPx()
+        offsetPx = 0.dp.toPx()
+        pathEffect = null
+        cap = StrokeCap.Butt
+      }
+      is UnderlineStyle.Dotted -> {
+        strokeWidthPx = underlineStyle.strokeWidth.toPx()
+        offsetPx = underlineStyle.offset.toPx()
+        val gapPx = underlineStyle.gap.toPx()
+        val dotPx = strokeWidthPx.coerceAtLeast(1f)
+        pathEffect = PathEffect.dashPathEffect(floatArrayOf(dotPx, gapPx), 0f)
+        cap = StrokeCap.Round
+      }
+      is UnderlineStyle.Dashed -> {
+        strokeWidthPx = underlineStyle.strokeWidth.toPx()
+        offsetPx = underlineStyle.offset.toPx()
+        val dashPx = underlineStyle.dash.toPx()
+        val gapPx = underlineStyle.gap.toPx()
+        pathEffect = PathEffect.dashPathEffect(floatArrayOf(dashPx, gapPx), 0f)
+        cap = StrokeCap.Butt
+      }
+    }
+  }
+
+  val startLine = layoutResult.getLineForOffset(clampedStart)
+  val endLine = layoutResult.getLineForOffset(clampedEnd - 1)
+  for (line in startLine..endLine) {
+    val lineStart = layoutResult.getLineStart(line)
+    val lineEnd = layoutResult.getLineEnd(line, visibleEnd = true)
+    val segmentStart = maxOf(clampedStart, lineStart)
+    val segmentEnd = minOf(clampedEnd, lineEnd)
+    if (segmentEnd <= segmentStart) continue
+
+    val startBox = layoutResult.getBoundingBox(segmentStart)
+    val endBox = layoutResult.getBoundingBox(segmentEnd - 1)
+    val y = maxOf(startBox.bottom, endBox.bottom) + offsetPx
+    val xStart = startBox.left
+    val xEnd = endBox.right
+
+    drawLine(
+      color = color,
+      start = Offset(xStart, y),
+      end = Offset(xEnd, y),
+      strokeWidth = strokeWidthPx,
+      cap = cap,
+      pathEffect = pathEffect,
     )
   }
 }

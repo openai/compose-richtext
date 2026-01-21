@@ -32,6 +32,13 @@ import com.halilibo.richtext.ui.RichTextStyle
 import com.halilibo.richtext.ui.Table
 import com.halilibo.richtext.ui.WithStyle
 import com.halilibo.richtext.ui.material3.RichText
+import com.halilibo.richtext.ui.string.LinkDecoration
+import com.halilibo.richtext.ui.string.RichTextDecorations
+import com.halilibo.richtext.ui.string.RichTextString
+import com.halilibo.richtext.ui.string.Text as RichTextText
+import com.halilibo.richtext.ui.string.UnderlineStyle
+import com.halilibo.richtext.ui.string.richTextString
+import com.halilibo.richtext.ui.string.withFormat
 
 @Preview(widthDp = 300, heightDp = 1000)
 @Composable fun RichTextDemoOnWhite() {
@@ -61,6 +68,27 @@ import com.halilibo.richtext.ui.material3.RichText
     Text("Simple paragraph.")
     Text("Paragraph with\nmultiple lines.")
     Text("Paragraph with really long line that should be getting wrapped.")
+    val dottedLinkDecorations = RichTextDecorations(
+      linkDecorations = listOf(
+        LinkDecoration(
+          matcher = { destination -> destination.contains("dotted") },
+          underlineStyle = UnderlineStyle.Dotted(),
+        ),
+      ),
+    )
+    val dottedUnderlineText = richTextString {
+      append("Dotted underline with wrapping: ")
+      withFormat(RichTextString.Format.Link("https://example.com/dotted")) {
+        append(
+          "This is a long link that should wrap across multiple lines to show the " +
+              "dotted underline.",
+        )
+      }
+    }
+    RichTextText(
+      text = dottedUnderlineText,
+      decorations = dottedLinkDecorations,
+    )
     TextPreview()
 
     Heading(0, "Lists")

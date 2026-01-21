@@ -48,7 +48,10 @@ import com.halilibo.richtext.ui.RichTextStyle
 import com.halilibo.richtext.ui.material3.RichText
 import com.halilibo.richtext.ui.resolveDefaults
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
+import com.halilibo.richtext.ui.string.LinkDecoration
+import com.halilibo.richtext.ui.string.RichTextDecorations
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
+import com.halilibo.richtext.ui.string.UnderlineStyle
 
 @Preview
 @Composable private fun MarkdownSamplePreview() {
@@ -125,13 +128,31 @@ import com.halilibo.richtext.ui.string.RichTextRenderOptions
           val astNode = remember(parser) {
             parser.parse(sampleMarkdown)
           }
+          val richTextDecorations = remember {
+            RichTextDecorations(
+              linkDecorations = listOf(
+                LinkDecoration(
+                  matcher = { destination -> destination.contains("dotted") },
+                  underlineStyle = UnderlineStyle.Dotted(),
+                ),
+                LinkDecoration(
+                  matcher = { destination -> destination.contains("dashed") },
+                  underlineStyle = UnderlineStyle.Dashed(),
+                ),
+              ),
+            )
+          }
 
           ProvideToastUriHandler(context) {
             RichText(
               style = richTextStyle,
               modifier = Modifier.padding(8.dp),
             ) {
-              BasicMarkdown(astNode, astBlockNodeComposer = HeadingAstBlockNodeComposer)
+              BasicMarkdown(
+                astNode = astNode,
+                richTextDecorations = richTextDecorations,
+                astBlockNodeComposer = HeadingAstBlockNodeComposer,
+              )
             }
           }
         }
@@ -150,6 +171,7 @@ val HeadingAstBlockNodeComposer = object : AstBlockNodeComposer {
     contentOverride: ContentOverride?,
     inlineContentOverride: InlineContentOverride?,
     richTextRenderOptions: RichTextRenderOptions,
+    richTextDecorations: RichTextDecorations,
     markdownAnimationState: MarkdownAnimationState,
     visitChildren: @Composable (AstNode) -> Unit
   ) {
@@ -185,6 +207,11 @@ private fun CheckboxPreference(
 private val sampleMarkdown = """
   # Demo
   Based on [this cheatsheet][cheatsheet]
+
+  ## Link underline styles
+  - [Dotted underline example](https://example.com/dotted)
+  - [Dashed underline example](https://example.com/dashed)
+  - [Default underline example](https://example.com/solid)
 
   ---
 
