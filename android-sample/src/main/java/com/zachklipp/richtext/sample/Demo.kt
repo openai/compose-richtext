@@ -13,6 +13,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.halilibo.richtext.ui.BlockQuote
@@ -68,11 +70,20 @@ import com.halilibo.richtext.ui.string.withFormat
     Text("Simple paragraph.")
     Text("Paragraph with\nmultiple lines.")
     Text("Paragraph with really long line that should be getting wrapped.")
+    val bodyTextColor = LocalContentColor.current
     val dottedLinkDecorations = RichTextDecorations(
       linkDecorations = listOf(
         LinkDecoration(
           matcher = { destination -> destination.contains("dotted") },
           underlineStyle = UnderlineStyle.Dotted(),
+          linkStyleOverride = { base ->
+            TextLinkStyles(
+              style = (base?.style ?: SpanStyle()).copy(color = bodyTextColor),
+              focusedStyle = base?.focusedStyle?.copy(color = bodyTextColor),
+              hoveredStyle = base?.hoveredStyle?.copy(color = bodyTextColor),
+              pressedStyle = base?.pressedStyle?.copy(color = bodyTextColor),
+            )
+          },
         ),
       ),
     )
