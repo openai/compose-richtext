@@ -14,10 +14,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -33,6 +36,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import com.halilibo.richtext.commonmark.CommonMarkdownParseOptions
 import com.halilibo.richtext.commonmark.CommonmarkAstNodeParser
 import com.halilibo.richtext.markdown.AstBlockNodeComposer
@@ -47,6 +51,8 @@ import com.halilibo.richtext.ui.RichTextScope
 import com.halilibo.richtext.ui.RichTextStyle
 import com.halilibo.richtext.ui.material3.RichText
 import com.halilibo.richtext.ui.resolveDefaults
+import com.halilibo.richtext.ui.string.InlineIconSpec
+import com.halilibo.richtext.ui.string.LinkInlineContent
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
 import com.halilibo.richtext.ui.string.LinkDecoration
 import com.halilibo.richtext.ui.string.RichTextDecorations
@@ -128,12 +134,21 @@ import com.halilibo.richtext.ui.string.UnderlineStyle
           val astNode = remember(parser) {
             parser.parse(sampleMarkdown)
           }
-          val richTextDecorations = remember {
+          val arrowPainter = rememberVectorPainter(Icons.Default.ArrowForward)
+          val linkTint = LocalContentColor.current
+          val richTextDecorations = remember(arrowPainter, linkTint) {
             RichTextDecorations(
               linkDecorations = listOf(
                 LinkDecoration(
                   matcher = { destination, _ -> destination.contains("dotted") },
                   underlineStyle = UnderlineStyle.Dotted(),
+                  inlineContent = LinkInlineContent(
+                    trailing = InlineIconSpec.Painter(
+                      painter = arrowPainter,
+                      tint = linkTint,
+                      contentDescription = null,
+                    ),
+                  ),
                 ),
                 LinkDecoration(
                   matcher = { destination, _ -> destination.contains("dashed") },

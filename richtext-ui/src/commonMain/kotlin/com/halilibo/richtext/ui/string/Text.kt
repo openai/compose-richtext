@@ -74,10 +74,45 @@ public fun RichTextScope.Text(
   val annotated = remember(text, resolvedStyle, contentColor, decorations) {
     text.toAnnotatedString(resolvedStyle, contentColor, decorations)
   }
-  val inlineContents = remember(text) { text.getInlineContents() }
-  val decoratedLinkRanges = remember(text, decorations) {
-    text.decoratedLinkRanges(decorations)
+  val baseInlineContents = remember(text) { text.getInlineContents() }
+  val resolvedLinkDecorations = remember(text, decorations) {
+    text.resolveLinkDecorations(decorations)
   }
+  val hasInlineIcons = remember(resolvedLinkDecorations) {
+    resolvedLinkDecorations.any { it.hasInlineContent() }
+  }
+  val decoratedTextResult = remember(
+    annotated,
+    baseInlineContents,
+    resolvedLinkDecorations,
+    hasInlineIcons,
+  ) {
+    if (hasInlineIcons) {
+      decorateAnnotatedStringWithLinkIcons(
+        annotated = annotated,
+        baseInlineContents = baseInlineContents,
+        linkDecorations = resolvedLinkDecorations,
+      )
+    } else {
+      DecoratedTextResult(
+        annotatedString = annotated,
+        inlineContents = baseInlineContents,
+        decoratedLinkRanges = resolvedLinkDecorations
+          .filter { it.underlineStyle !is UnderlineStyle.Solid }
+          .map { range ->
+            DecoratedLinkRange(
+              start = range.start,
+              end = range.end,
+              destination = range.destination,
+              underlineStyle = range.underlineStyle,
+              linkStyleOverride = range.linkStyleOverride,
+            )
+          },
+      )
+    }
+  }
+  val inlineContents = decoratedTextResult.inlineContents
+  val decoratedLinkRanges = decoratedTextResult.decoratedLinkRanges
   var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
   val underlineSpecs = remember(decoratedLinkRanges, resolvedStyle, contentColor) {
     decoratedLinkRanges.mapNotNull { range ->
@@ -113,14 +148,14 @@ public fun RichTextScope.Text(
 
   val animatedText = if (renderOptions.animate && inlineContents.isEmpty()) {
     rememberAnimatedText(
-      annotated = annotated,
+      annotated = decoratedTextResult.annotatedString,
       contentColor = contentColor,
       renderOptions = renderOptions,
       isLeafText = isLeafText,
       sharedAnimationState = sharedAnimationState,
     )
   } else {
-    annotated
+    decoratedTextResult.annotatedString
   }
 
   if (inlineContents.isEmpty()) {
