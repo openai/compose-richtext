@@ -40,8 +40,8 @@ public sealed class InlineIconSpec(
     val painter: androidx.compose.ui.graphics.painter.Painter,
     val tint: Color? = null,
     val contentDescription: String? = null,
-    val iconSize: DpSize = DefaultIconSize,
-    val iconPlaceholderVerticalAlign: PlaceholderVerticalAlign = PlaceholderVerticalAlign.Center,
+    val iconSize: DpSize = DefaultSize,
+    val iconPlaceholderVerticalAlign: PlaceholderVerticalAlign = DefaultPlaceholderVerticalAlign,
   ) : InlineIconSpec(
     size = iconSize,
     placeholderVerticalAlign = iconPlaceholderVerticalAlign,
@@ -49,12 +49,18 @@ public sealed class InlineIconSpec(
 
   public data class Composable(
     val content: LinkComposableContent,
-    val iconSize: DpSize = DefaultIconSize,
-    val iconPlaceholderVerticalAlign: PlaceholderVerticalAlign = PlaceholderVerticalAlign.Center,
+    val iconSize: DpSize = DefaultSize,
+    val iconPlaceholderVerticalAlign: PlaceholderVerticalAlign = DefaultPlaceholderVerticalAlign,
   ) : InlineIconSpec(
     size = iconSize,
     placeholderVerticalAlign = iconPlaceholderVerticalAlign,
   )
+
+  public companion object {
+    public val DefaultSize: DpSize = DpSize(16.dp, 16.dp)
+    public val DefaultPlaceholderVerticalAlign: PlaceholderVerticalAlign =
+      PlaceholderVerticalAlign.Center
+  }
 }
 
 public data class LinkContext(
@@ -85,5 +91,3 @@ public sealed class UnderlineStyle {
     val offset: Dp = 1.dp,
   ) : UnderlineStyle()
 }
-
-private val DefaultIconSize: DpSize = DpSize(16.dp, 16.dp)
