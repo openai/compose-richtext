@@ -27,7 +27,6 @@ import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
@@ -35,6 +34,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.fastForEach
 import com.halilibo.richtext.ui.RichTextScope
 import com.halilibo.richtext.ui.Text
 import com.halilibo.richtext.ui.currentContentColor
@@ -45,6 +45,7 @@ import com.halilibo.richtext.ui.util.segmentIntoPhrases
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.pow
+import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
@@ -67,7 +68,6 @@ public fun RichTextScope.Text(
 ) {
   val style = currentRichTextStyle.stringStyle
   val contentColor = currentContentColor
-  val density = LocalDensity.current
   val resolvedStyle = remember(style) {
     (style ?: RichTextStringStyle.Default).resolveDefaults()
   }
@@ -97,14 +97,13 @@ public fun RichTextScope.Text(
     Modifier.drawWithContent {
       drawContent()
       val layoutResult = textLayoutResult ?: return@drawWithContent
-      underlineSpecs.forEach { spec ->
+      underlineSpecs.fastForEach { spec ->
         drawUnderline(
           layoutResult = layoutResult,
           start = spec.range.start,
           end = spec.range.end,
           underlineStyle = spec.range.underlineStyle,
           color = spec.color,
-          density = density,
         )
       }
     }
@@ -176,7 +175,6 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawUnderline(
   end: Int,
   underlineStyle: UnderlineStyle,
   color: Color,
-  density: androidx.compose.ui.unit.Density,
 ) {
   val textLength = layoutResult.layoutInput.text.text.length
   val clampedStart = start.coerceIn(0, textLength)
@@ -188,7 +186,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawUnderline(
   val pathEffect: PathEffect?
   val cap: StrokeCap
 
-  with(density) {
+  with(this) {
     when (underlineStyle) {
       is UnderlineStyle.Solid -> {
         strokeWidthPx = 1.dp.toPx()
@@ -226,9 +224,9 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawUnderline(
 
     val startBox = layoutResult.getBoundingBox(segmentStart)
     val endBox = layoutResult.getBoundingBox(segmentEnd - 1)
-    val y = maxOf(startBox.bottom, endBox.bottom) + offsetPx
-    val xStart = startBox.left
-    val xEnd = endBox.right
+    val y = (maxOf(startBox.bottom, endBox.bottom) + offsetPx).roundToInt().toFloat()
+    val xStart = startBox.left.roundToInt().toFloat()
+    val xEnd = endBox.right.roundToInt().toFloat()
 
     drawLine(
       color = color,

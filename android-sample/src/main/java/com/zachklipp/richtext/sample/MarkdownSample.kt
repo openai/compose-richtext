@@ -132,11 +132,11 @@ import com.halilibo.richtext.ui.string.UnderlineStyle
             RichTextDecorations(
               linkDecorations = listOf(
                 LinkDecoration(
-                  matcher = { destination -> destination.contains("dotted") },
+                  matcher = { destination, _ -> destination.contains("dotted") },
                   underlineStyle = UnderlineStyle.Dotted(),
                 ),
                 LinkDecoration(
-                  matcher = { destination -> destination.contains("dashed") },
+                  matcher = { destination, _ -> destination.contains("dashed") },
                   underlineStyle = UnderlineStyle.Dashed(),
                 ),
               ),

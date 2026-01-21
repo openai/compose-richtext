@@ -74,7 +74,7 @@ import com.halilibo.richtext.ui.string.withFormat
     val dottedLinkDecorations = RichTextDecorations(
       linkDecorations = listOf(
         LinkDecoration(
-          matcher = { destination -> destination.contains("dotted") },
+          matcher = { destination, _ -> destination.contains("dotted") },
           underlineStyle = UnderlineStyle.Dotted(),
           linkStyleOverride = { base ->
             TextLinkStyles(

@@ -8,7 +8,7 @@ import androidx.compose.ui.text.TextLinkStyles
  * Defines how specific links should be decorated based on their destination.
  */
 public data class LinkDecoration(
-  val matcher: (String) -> Boolean,
+  val matcher: (destination: String, text: String) -> Boolean,
   val underlineStyle: UnderlineStyle = UnderlineStyle.Solid,
   val linkStyleOverride: ((TextLinkStyles?) -> TextLinkStyles)? = null,
 )

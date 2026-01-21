@@ -183,9 +183,9 @@ public class RichTextString internal constructor(
       // And apply their actual SpanStyles to the string.
       tags.forEach { range ->
         val format = Format.findTag(range.item, formatObjects) ?: return@forEach
-        when (format) {
-          is Format.Link -> {
-            val decoration = decorations.findLinkDecoration(format.destination)
+        if (format is Format.Link) {
+          val linkText = taggedString.text.substring(range.start, range.end)
+          val decoration = decorations.findLinkDecoration(format.destination, linkText)
             val linkStyle = decoration?.linkStyleOverride
               ?.invoke(style.linkStyle)
               ?: style.linkStyle
@@ -200,17 +200,15 @@ public class RichTextString internal constructor(
               linkInteractionListener = format.linkInteractionListener,
             )
             addLink(linkAnnotation, range.start, range.end)
-          }
-          else -> {
-            format.getAnnotation(style, contentColor)
-              ?.let { annotation ->
-                if (annotation is SpanStyle) {
-                  addStyle(annotation, range.start, range.end)
-                } else if (annotation is LinkAnnotation.Url) {
-                  addLink(annotation, range.start, range.end)
-                }
+        } else {
+          format.getAnnotation(style, contentColor)
+            ?.let { annotation ->
+              if (annotation is SpanStyle) {
+                addStyle(annotation, range.start, range.end)
+              } else if (annotation is LinkAnnotation.Url) {
+                addLink(annotation, range.start, range.end)
               }
-          }
+            }
         }
       }
     }
@@ -238,7 +236,8 @@ public class RichTextString internal constructor(
         val format = Format.findTag(range.item, formatObjects)
           as? Format.Link
           ?: return@mapNotNull null
-        val decoration = decorations.findLinkDecoration(format.destination)
+        val linkText = taggedString.text.substring(range.start, range.end)
+        val decoration = decorations.findLinkDecoration(format.destination, linkText)
           ?: return@mapNotNull null
         if (decoration.underlineStyle is UnderlineStyle.Solid) return@mapNotNull null
         DecoratedLinkRange(
@@ -507,8 +506,10 @@ internal data class DecoratedLinkRange(
   val linkStyleOverride: ((TextLinkStyles?) -> TextLinkStyles)?,
 )
 
-private fun RichTextDecorations.findLinkDecoration(destination: String): LinkDecoration? =
-  linkDecorations.firstOrNull { it.matcher(destination) }
+private fun RichTextDecorations.findLinkDecoration(
+  destination: String,
+  text: String,
+): LinkDecoration? = linkDecorations.firstOrNull { it.matcher(destination, text) }
 
 private fun TextLinkStyles?.withoutUnderline(): TextLinkStyles? {
   if (this == null) return null
