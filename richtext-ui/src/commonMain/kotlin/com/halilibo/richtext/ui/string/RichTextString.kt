@@ -251,6 +251,33 @@ public class RichTextString internal constructor(
       .toList()
   }
 
+  internal fun resolveLinkDecorations(
+    decorations: RichTextDecorations,
+  ): List<ResolvedLinkDecorationRange> {
+    if (decorations.linkDecorations.isEmpty()) return emptyList()
+
+    return taggedString.getStringAnnotations(FormatAnnotationScope, 0, taggedString.length)
+      .asSequence()
+      .mapNotNull { range ->
+        val format = Format.findTag(range.item, formatObjects)
+          as? Format.Link
+          ?: return@mapNotNull null
+        val linkText = taggedString.text.substring(range.start, range.end)
+        val decoration = decorations.findLinkDecoration(format.destination, linkText)
+          ?: return@mapNotNull null
+        ResolvedLinkDecorationRange(
+          start = range.start,
+          end = range.end,
+          destination = format.destination,
+          text = linkText,
+          underlineStyle = decoration.underlineStyle,
+          linkStyleOverride = decoration.linkStyleOverride,
+          inlineContent = decoration.inlineContent,
+        )
+      }
+      .toList()
+  }
+
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (other !is RichTextString) return false
@@ -504,6 +531,16 @@ internal data class DecoratedLinkRange(
   val destination: String,
   val underlineStyle: UnderlineStyle,
   val linkStyleOverride: ((TextLinkStyles?) -> TextLinkStyles)?,
+)
+
+internal data class ResolvedLinkDecorationRange(
+  val start: Int,
+  val end: Int,
+  val destination: String,
+  val text: String,
+  val underlineStyle: UnderlineStyle,
+  val linkStyleOverride: ((TextLinkStyles?) -> TextLinkStyles)?,
+  val inlineContent: LinkInlineContent?,
 )
 
 private fun RichTextDecorations.findLinkDecoration(
