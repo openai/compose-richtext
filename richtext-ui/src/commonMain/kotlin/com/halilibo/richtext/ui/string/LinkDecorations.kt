@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 public data class LinkDecoration(
   val matcher: (destination: String, text: String) -> Boolean,
   val underlineStyle: UnderlineStyle = UnderlineStyle.Solid,
+  val underlineColor: Color? = null,
   val linkStyleOverride: ((TextLinkStyles?) -> TextLinkStyles)? = null,
   val inlineContent: LinkInlineContent? = null,
 )

@@ -105,6 +105,7 @@ public fun RichTextScope.Text(
               end = range.end,
               destination = range.destination,
               underlineStyle = range.underlineStyle,
+              underlineColor = range.underlineColor,
               linkStyleOverride = range.linkStyleOverride,
             )
           },
@@ -119,8 +120,9 @@ public fun RichTextScope.Text(
       val linkStyle = range.linkStyleOverride
         ?.invoke(resolvedStyle.linkStyle)
         ?: resolvedStyle.linkStyle
-      val underlineColor = linkStyle?.style?.color
-        ?.takeIf { it.isSpecified }
+      val underlineColor = range.underlineColor
+        ?: linkStyle?.style?.color
+          ?.takeIf { it.isSpecified }
         ?: contentColor
       UnderlineSpec(
         range = range,

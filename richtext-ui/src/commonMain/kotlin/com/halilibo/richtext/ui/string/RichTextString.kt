@@ -245,6 +245,7 @@ public class RichTextString internal constructor(
           end = range.end,
           destination = format.destination,
           underlineStyle = decoration.underlineStyle,
+          underlineColor = decoration.underlineColor,
           linkStyleOverride = decoration.linkStyleOverride,
         )
       }
@@ -271,6 +272,7 @@ public class RichTextString internal constructor(
           destination = format.destination,
           text = linkText,
           underlineStyle = decoration.underlineStyle,
+          underlineColor = decoration.underlineColor,
           linkStyleOverride = decoration.linkStyleOverride,
           inlineContent = decoration.inlineContent,
         )
@@ -530,6 +532,7 @@ internal data class DecoratedLinkRange(
   val end: Int,
   val destination: String,
   val underlineStyle: UnderlineStyle,
+  val underlineColor: Color?,
   val linkStyleOverride: ((TextLinkStyles?) -> TextLinkStyles)?,
 )
 
@@ -539,6 +542,7 @@ internal data class ResolvedLinkDecorationRange(
   val destination: String,
   val text: String,
   val underlineStyle: UnderlineStyle,
+  val underlineColor: Color?,
   val linkStyleOverride: ((TextLinkStyles?) -> TextLinkStyles)?,
   val inlineContent: LinkInlineContent?,
 )

@@ -105,6 +105,7 @@ internal fun decorateAnnotatedStringWithLinkIcons(
         end = textEnd,
         destination = decoration.destination,
         underlineStyle = decoration.underlineStyle,
+        underlineColor = decoration.underlineColor,
         linkStyleOverride = decoration.linkStyleOverride,
       )
     }
