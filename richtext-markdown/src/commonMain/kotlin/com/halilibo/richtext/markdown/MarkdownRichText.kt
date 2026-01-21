@@ -30,6 +30,7 @@ import com.halilibo.richtext.ui.FormattedList
 import com.halilibo.richtext.ui.RichTextScope
 import com.halilibo.richtext.ui.string.InlineContent
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
+import com.halilibo.richtext.ui.string.RichTextDecorations
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
 import com.halilibo.richtext.ui.string.RichTextString
 import com.halilibo.richtext.ui.string.Text
@@ -63,6 +64,7 @@ internal fun RichTextScope.MarkdownRichText(
   astNode: AstNode,
   inlineContentOverride: InlineContentOverride?,
   richTextRenderOptions: RichTextRenderOptions,
+  richTextDecorations: RichTextDecorations,
   markdownAnimationState: MarkdownAnimationState,
   modifier: Modifier = Modifier,
 ) {
@@ -77,6 +79,7 @@ internal fun RichTextScope.MarkdownRichText(
     isLeafText = astNode.isLastInTree(),
     renderOptions = richTextRenderOptions,
     sharedAnimationState = markdownAnimationState,
+    decorations = richTextDecorations,
   )
 }
 
