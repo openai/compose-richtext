@@ -130,6 +130,20 @@ public fun RichTextScope.Text(
       )
     }
   }
+  val animatedResult = if (renderOptions.animate && inlineContents.isEmpty()) {
+    rememberAnimatedTextResult(
+      annotated = decoratedTextResult.annotatedString,
+      contentColor = contentColor,
+      renderOptions = renderOptions,
+      isLeafText = isLeafText,
+      sharedAnimationState = sharedAnimationState,
+    )
+  } else {
+    null
+  }
+  val animatedText = animatedResult?.text ?: decoratedTextResult.annotatedString
+  val underlineAlphaForOffset = animatedResult?.alphaForOffset
+
   val underlineModifier = if (underlineSpecs.isNotEmpty()) {
     Modifier.drawWithContent {
       drawContent()
@@ -141,23 +155,12 @@ public fun RichTextScope.Text(
           end = spec.range.end,
           underlineStyle = spec.range.underlineStyle,
           color = spec.color,
+          alphaForOffset = underlineAlphaForOffset,
         )
       }
     }
   } else {
     Modifier
-  }
-
-  val animatedText = if (renderOptions.animate && inlineContents.isEmpty()) {
-    rememberAnimatedText(
-      annotated = decoratedTextResult.annotatedString,
-      contentColor = contentColor,
-      renderOptions = renderOptions,
-      isLeafText = isLeafText,
-      sharedAnimationState = sharedAnimationState,
-    )
-  } else {
-    decoratedTextResult.annotatedString
   }
 
   if (inlineContents.isEmpty()) {
@@ -212,6 +215,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawUnderline(
   end: Int,
   underlineStyle: UnderlineStyle,
   color: Color,
+  alphaForOffset: ((Int) -> Float)?,
 ) {
   val textLength = layoutResult.layoutInput.text.text.length
   val clampedStart = start.coerceIn(0, textLength)
@@ -265,8 +269,10 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawUnderline(
     val xStart = startBox.left.roundToInt().toFloat()
     val xEnd = endBox.right.roundToInt().toFloat()
 
+    val alpha = alphaForOffset?.invoke(segmentEnd - 1)?.coerceIn(0f, 1f) ?: 1f
+    if (alpha <= 0f) continue
     drawLine(
-      color = color,
+      color = color.copy(alpha = color.alpha * alpha),
       start = Offset(xStart, y),
       end = Offset(xEnd, y),
       strokeWidth = strokeWidthPx,
@@ -303,14 +309,19 @@ public class MarkdownAnimationState {
     (lastAnimationStartMs - System.currentTimeMillis()).coerceAtLeast(0).toInt()
 }
 
+private data class AnimatedTextResult(
+  val text: AnnotatedString,
+  val alphaForOffset: (Int) -> Float,
+)
+
 @Composable
-private fun rememberAnimatedText(
+private fun rememberAnimatedTextResult(
   annotated: AnnotatedString,
   renderOptions: RichTextRenderOptions,
   contentColor: Color,
   sharedAnimationState: MarkdownAnimationState,
   isLeafText: Boolean,
-): AnnotatedString {
+): AnimatedTextResult {
   val coroutineScope = rememberCoroutineScope()
   val animations = remember { mutableStateMapOf<Int, TextAnimation>() }
   val textToRender = remember { mutableStateOf(AnnotatedString("")) }
@@ -372,7 +383,7 @@ private fun rememberAnimatedText(
 
   // contentColor rarely changes, and it's not already a State. When contentColor changes, a new
   // AnnotatedString must be created using the updated contentColor value.
-  return remember(contentColor) {
+  val text = remember(contentColor) {
     // textToRender and the set of animations are tracked as States, and trigger the derivedStateOf
     // to return a new value in order to create a new AnnotatedString with the latest text and
     // animated Brushes.
@@ -389,6 +400,21 @@ private fun rememberAnimatedText(
       )
     }
   }.value
+
+  return AnimatedTextResult(
+    text = text,
+    alphaForOffset = { offset ->
+      var bestStart = -1
+      var bestAlpha = 1f
+      animations.values.forEach { animation ->
+        if (animation.startIndex <= offset && animation.startIndex > bestStart) {
+          bestStart = animation.startIndex
+          bestAlpha = animation.alpha
+        }
+      }
+      bestAlpha
+    }
+  )
 }
 
 private class TextAnimation(val startIndex: Int) {
