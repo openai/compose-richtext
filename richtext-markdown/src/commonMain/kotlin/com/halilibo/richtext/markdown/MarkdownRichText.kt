@@ -2,8 +2,8 @@ package com.halilibo.richtext.markdown
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.IntSize
@@ -35,6 +35,8 @@ import com.halilibo.richtext.ui.string.RichTextRenderOptions
 import com.halilibo.richtext.ui.string.RichTextString
 import com.halilibo.richtext.ui.string.Text
 import com.halilibo.richtext.ui.string.withFormat
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Only render the text content that exists below [astNode]. All the content blocks
@@ -69,18 +71,27 @@ internal fun RichTextScope.MarkdownRichText(
   modifier: Modifier = Modifier,
 ) {
   // Assume that only RichText nodes reside below this level.
-  val richText = remember(astNode) {
-    computeRichTextString(astNode, inlineContentOverride)
+  val richText by produceState<RichTextString?>(
+    initialValue = null,
+    key1 = astNode,
+    key2 = inlineContentOverride
+  ) {
+    value = withContext(Dispatchers.Default) {
+      computeRichTextString(astNode, inlineContentOverride)
+    }
   }
 
-  Text(
-    text = richText,
-    modifier = modifier,
-    isLeafText = astNode.isLastInTree(),
-    renderOptions = richTextRenderOptions,
-    sharedAnimationState = markdownAnimationState,
-    decorations = richTextDecorations,
-  )
+  richText?.let {
+    Text(
+      text = it,
+      modifier = modifier,
+      isLeafText = astNode.isLastInTree(),
+      renderOptions = richTextRenderOptions,
+      sharedAnimationState = markdownAnimationState,
+      decorations = richTextDecorations,
+    )
+  }
+
 }
 
 private fun AstNode?.isLastInTree(): Boolean = this?.links?.parent == null ||
