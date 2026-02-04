@@ -80,9 +80,9 @@ public sealed class UnderlineStyle {
   public object Solid : UnderlineStyle()
 
   public data class Dotted(
-    val strokeWidth: Dp = 1.dp,
+    val strokeWidth: Dp = 2.dp,
     val gap: Dp = 2.dp,
-    val offset: Dp = 0.dp,
+    val offset: Dp = 0.5.dp,
   ) : UnderlineStyle()
 
   public data class Dashed(
