@@ -239,8 +239,9 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawUnderline(
         strokeWidthPx = underlineStyle.strokeWidth.toPx()
         offsetPx = underlineStyle.offset.toPx()
         val gapPx = underlineStyle.gap.toPx()
-        val dotPx = strokeWidthPx.coerceAtLeast(1f)
-        pathEffect = PathEffect.dashPathEffect(floatArrayOf(dotPx, gapPx), 0f)
+        // Round-capped zero-length dashes render as true circular dots.
+        val patternGapPx = (gapPx + strokeWidthPx).coerceAtLeast(1f)
+        pathEffect = PathEffect.dashPathEffect(floatArrayOf(0f, patternGapPx), 0f)
         cap = StrokeCap.Round
       }
       is UnderlineStyle.Dashed -> {
@@ -265,7 +266,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawUnderline(
 
     val startBox = layoutResult.getBoundingBox(segmentStart)
     val endBox = layoutResult.getBoundingBox(segmentEnd - 1)
-    val y = (maxOf(startBox.bottom, endBox.bottom) + offsetPx).roundToInt().toFloat()
+    val y = layoutResult.getLineBaseline(line) + strokeWidthPx + offsetPx
     val xStart = startBox.left.roundToInt().toFloat()
     val xEnd = endBox.right.roundToInt().toFloat()
 
