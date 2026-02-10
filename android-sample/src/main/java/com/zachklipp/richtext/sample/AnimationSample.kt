@@ -21,7 +21,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.halilibo.richtext.commonmark.Markdown
 import com.halilibo.richtext.ui.material3.RichText
+import com.halilibo.richtext.ui.string.LinkDecoration
+import com.halilibo.richtext.ui.string.RichTextDecorations
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
+import com.halilibo.richtext.ui.string.UnderlineStyle
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 
@@ -124,6 +127,14 @@ private fun CompleteTextSample() {
     Markdown(
       SampleText,
       richtextRenderOptions = markdownOptions,
+      richTextDecorations = RichTextDecorations(
+        listOf(
+        LinkDecoration(
+          matcher = { _,_ -> true },
+          underlineStyle = UnderlineStyle.Dotted(),
+        ),
+      )
+      )
     )
   }
 }
@@ -157,6 +168,14 @@ private fun ChunkingTextSample() {
     Markdown(
       currentText,
       richtextRenderOptions = markdownOptions,
+      richTextDecorations = RichTextDecorations(
+        listOf(
+          LinkDecoration(
+            matcher = { _, _ -> true },
+            underlineStyle = UnderlineStyle.Dotted(),
+          ),
+        )
+      )
     )
   }
 }
@@ -318,8 +337,8 @@ private fun HindiChunkingTextSample() {
 }
 
 private const val SampleText = """
-1-The quick brown fox jumps over the lazy dog.
-1-The quick brown fox jumps over the lazy dog.
+1-**The quick brown fox jumps over the lazy dog.**
+1-[The quick brown fox jumps over the lazy dog.](https://gogogo.com)
 1-The quick brown fox jumps over the lazy dog.
 1-The quick brown fox jumps over the lazy dog.
 1-The quick brown fox jumps over the lazy dog.

@@ -75,6 +75,78 @@ import org.commonmark.node.Text
 import org.commonmark.node.ThematicBreak
 import org.commonmark.parser.Parser
 
+private data class UnclosedDelimiter(
+  val delimiter: String,
+  val position: Int,
+  var hasContent: Boolean = false,
+)
+
+internal fun autoCloseStreamingInlineMarkdown(text: String): String {
+  if (text.isEmpty()) return text
+
+  val tokens = listOf("**", "__", "~~", "*", "_", "`")
+  val stack = mutableListOf<UnclosedDelimiter>()
+
+  var index = 0
+  var escaped = false
+
+  while (index < text.length) {
+    val char = text[index]
+
+    if (escaped) {
+      escaped = false
+      if (!char.isWhitespace()) {
+        stack.forEach { it.hasContent = true }
+      }
+      index++
+      continue
+    }
+
+    if (char == '\\') {
+      escaped = true
+      index++
+      continue
+    }
+
+    val token = tokens.firstOrNull { candidate -> text.startsWith(candidate, index) }
+    if (token != null) {
+      if (stack.lastOrNull()?.delimiter == token) {
+        stack.removeAt(stack.lastIndex)
+      } else {
+        stack += UnclosedDelimiter(delimiter = token, position = index)
+      }
+      index += token.length
+      continue
+    }
+
+    if (!char.isWhitespace()) {
+      stack.forEach { it.hasContent = true }
+    }
+    index++
+  }
+
+  var trimEndIndex = text.length
+  while (stack.isNotEmpty()) {
+    val last = stack.last()
+    if (!last.hasContent && last.position + last.delimiter.length == trimEndIndex) {
+      trimEndIndex = last.position
+      stack.removeAt(stack.lastIndex)
+      continue
+    }
+    break
+  }
+
+  val trimmedText = if (trimEndIndex == text.length) text else text.substring(0, trimEndIndex)
+  if (stack.isEmpty()) return trimmedText
+
+  val closingSuffix = stack
+    .asReversed()
+    .filter { it.hasContent }
+    .joinToString(separator = "") { it.delimiter }
+
+  return if (closingSuffix.isEmpty()) trimmedText else trimmedText + closingSuffix
+}
+
 /**
  * Converts common-markdown tree to AstNode tree in a recursive fashion.
  */
@@ -207,6 +279,7 @@ public actual fun parsedMarkdown(text: String, options: CommonMarkdownParseOptio
 public actual class CommonmarkAstNodeParser actual constructor(
   options: CommonMarkdownParseOptions
 ) {
+  private val autoCloseInlineDelimiters = options.autoCloseInlineDelimiters
 
   private val parser = Parser.builder()
     .extensions(
@@ -219,7 +292,9 @@ public actual class CommonmarkAstNodeParser actual constructor(
     .build()
 
   public actual fun parse(text: String): AstNode {
-    val commonmarkNode = parser.parse(text)
+    val commonmarkNode = parser.parse(
+      if (autoCloseInlineDelimiters) autoCloseStreamingInlineMarkdown(text) else text
+    )
       ?: throw IllegalArgumentException(
         "Could not parse the given text content into a meaningful Markdown representation!"
       )

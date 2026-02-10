@@ -91,13 +91,14 @@ Which produces something like this:
 
 ![markdown demo](img/markdown-demo.png)
 
-## [`MarkdownParseOptions`](../api/richtext-commonmark/com.halilibo.richtext.commonmark/-markdown-parse-options.html)
+## [`CommonMarkdownParseOptions`](../api/richtext-commonmark/com.halilibo.richtext.commonmark/-common-markdown-parse-options.html)
 
-Passing `MarkdownParseOptions` into either `Markdown` composable or `CommonmarkAstNodeParser.parse` method provides the ability to control some aspects of the markdown parser:
+Passing `CommonMarkdownParseOptions` into either `Markdown` composable or `CommonmarkAstNodeParser.parse` method provides the ability to control some aspects of the markdown parser:
 
 ```kotlin
-val markdownParseOptions = MarkdownParseOptions(
-  autolink = false
+val markdownParseOptions = CommonMarkdownParseOptions(
+  autolink = false,
+  autoCloseInlineDelimiters = true,
 )
 
 Markdown(
