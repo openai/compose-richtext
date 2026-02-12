@@ -15,6 +15,8 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 
+private const val WORD_JOINER: String = "\u2060"
+
 internal data class DecoratedTextResult(
   val annotatedString: AnnotatedString,
   val inlineContents: Map<String, InlineContent>,
@@ -75,6 +77,8 @@ internal fun decorateAnnotatedStringWithLinkIcons(
           val iconStart = builder.length - 1
           builder.addLink(linkAnnotation, iconStart, builder.length)
         }
+        // Prevent the leading icon from wrapping onto a line by itself.
+        builder.append(WORD_JOINER)
       }
     }
 
