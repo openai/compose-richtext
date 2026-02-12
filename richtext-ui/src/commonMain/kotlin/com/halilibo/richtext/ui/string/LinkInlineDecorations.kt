@@ -88,6 +88,8 @@ internal fun decorateAnnotatedStringWithLinkIcons(
 
     if (inlineContent != null) {
       inlineContent.trailing?.let { spec ->
+        // Prevent the trailing icon from wrapping onto a line by itself.
+        builder.append(WORD_JOINER)
         val id = "link_inline_${index}_trailing"
         builder.appendInlineContent(id, REPLACEMENT_CHAR)
         inlineContents[id] = buildInlineContent(
