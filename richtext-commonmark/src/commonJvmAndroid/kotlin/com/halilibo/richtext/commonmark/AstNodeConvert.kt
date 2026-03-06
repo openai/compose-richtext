@@ -75,6 +75,38 @@ import org.commonmark.node.Text
 import org.commonmark.node.ThematicBreak
 import org.commonmark.parser.Parser
 
+private fun Node.directChildrenSequence(): Sequence<Node> =
+  generateSequence(firstChild) { it.next }
+
+private fun TableBlock.maxColumns(): Int =
+  directChildrenSequence()
+    .filter { child -> child is TableHead || child is TableBody }
+    .flatMap { section ->
+      section.directChildrenSequence()
+        .filterIsInstance<TableRow>()
+    }
+    .maxOfOrNull { row ->
+      row.directChildrenSequence().count { child -> child is TableCell }
+    }
+    ?: 0
+
+private fun Node.containsZeroColumnTable(): Boolean =
+  ((this as? TableBlock)?.maxColumns() == 0) ||
+    directChildrenSequence().any { child -> child.containsZeroColumnTable() }
+
+private fun buildParser(
+  options: CommonMarkdownParseOptions,
+  enableTables: Boolean,
+): Parser = Parser.builder()
+  .extensions(
+    listOfNotNull(
+      if (enableTables) TablesExtension.create() else null,
+      StrikethroughExtension.create(),
+      if (options.autolink) AutolinkExtension.create() else null
+    )
+  )
+  .build()
+
 /**
  * Converts common-markdown tree to AstNode tree in a recursive fashion.
  */
@@ -208,15 +240,8 @@ public actual class CommonmarkAstNodeParser actual constructor(
   options: CommonMarkdownParseOptions
 ) {
 
-  private val parser = Parser.builder()
-    .extensions(
-      listOfNotNull(
-        TablesExtension.create(),
-        StrikethroughExtension.create(),
-        if (options.autolink) AutolinkExtension.create() else null
-      )
-    )
-    .build()
+  private val parser = buildParser(options, enableTables = true)
+  private val parserWithoutTables = buildParser(options, enableTables = false)
 
   public actual fun parse(text: String): AstNode {
     val commonmarkNode = parser.parse(text)
@@ -224,7 +249,14 @@ public actual class CommonmarkAstNodeParser actual constructor(
         "Could not parse the given text content into a meaningful Markdown representation!"
       )
 
-    return convert(commonmarkNode)
+    val normalizedNode = if (commonmarkNode.containsZeroColumnTable()) {
+      // Preserve malformed table text as plain markdown instead of constructing an empty table.
+      parserWithoutTables.parse(text)
+    } else {
+      commonmarkNode
+    }
+
+    return convert(normalizedNode)
       ?: throw IllegalArgumentException(
         "Could not convert the generated Commonmark Node into an ASTNode!"
       )
