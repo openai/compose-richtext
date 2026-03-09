@@ -1,7 +1,6 @@
 package com.halilibo.richtext.markdown
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import com.halilibo.richtext.markdown.node.AstNode
 import com.halilibo.richtext.markdown.node.AstTableBody
 import com.halilibo.richtext.markdown.node.AstTableCell
@@ -10,6 +9,7 @@ import com.halilibo.richtext.markdown.node.AstTableRow
 import com.halilibo.richtext.ui.RichTextScope
 import com.halilibo.richtext.ui.Table
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
+import com.halilibo.richtext.ui.string.RichTextDecorations
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
 
 @Composable
@@ -17,6 +17,7 @@ internal fun RichTextScope.RenderTable(
   node: AstNode,
   inlineContentOverride: InlineContentOverride?,
   richtextRenderOptions: RichTextRenderOptions,
+  richTextDecorations: RichTextDecorations,
   markdownAnimationState: MarkdownAnimationState,
 ) {
   Table(
@@ -34,6 +35,7 @@ internal fun RichTextScope.RenderTable(
               tableCell,
               inlineContentOverride,
               richtextRenderOptions,
+              richTextDecorations,
               markdownAnimationState,
             )
           }
@@ -52,11 +54,12 @@ internal fun RichTextScope.RenderTable(
                   tableCell,
                   inlineContentOverride,
                   richtextRenderOptions,
+                  richTextDecorations,
                   markdownAnimationState,
                 )
               }
             }
         }
-      }
+    }
   }
 }

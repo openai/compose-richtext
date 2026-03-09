@@ -12,7 +12,7 @@ import com.halilibo.richtext.markdown.ContentOverride
 import com.halilibo.richtext.markdown.InlineContentOverride
 import com.halilibo.richtext.markdown.node.AstNode
 import com.halilibo.richtext.ui.RichTextScope
-import com.halilibo.richtext.ui.string.MarkdownAnimationState
+import com.halilibo.richtext.ui.string.RichTextDecorations
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
 import org.commonmark.node.Node
 
@@ -29,6 +29,7 @@ public fun RichTextScope.Markdown(
   content: String,
   markdownParseOptions: CommonMarkdownParseOptions = CommonMarkdownParseOptions.Default,
   richtextRenderOptions: RichTextRenderOptions = RichTextRenderOptions.Default,
+  richTextDecorations: RichTextDecorations = RichTextDecorations(),
   contentOverride: ContentOverride? = null,
   inlineContentOverride: InlineContentOverride? = null,
   astBlockNodeComposer: AstBlockNodeComposer? = null
@@ -51,6 +52,7 @@ public fun RichTextScope.Markdown(
       contentOverride = contentOverride,
       inlineContentOverride = inlineContentOverride,
       richTextRenderOptions = richtextRenderOptions,
+      richTextDecorations = richTextDecorations,
       astBlockNodeComposer = astBlockNodeComposer,
     )
   }
@@ -66,6 +68,7 @@ public fun RichTextScope.Markdown(
 public fun RichTextScope.Markdown(
   content: Node,
   richtextRenderOptions: RichTextRenderOptions = RichTextRenderOptions.Default,
+  richTextDecorations: RichTextDecorations = RichTextDecorations(),
   contentOverride: ContentOverride? = null,
   inlineContentOverride: InlineContentOverride? = null,
   astBlockNodeComposer: AstBlockNodeComposer? = null
@@ -76,6 +79,7 @@ public fun RichTextScope.Markdown(
     contentOverride,
     inlineContentOverride,
     richtextRenderOptions,
+    richTextDecorations,
     astBlockNodeComposer,
   )
 }

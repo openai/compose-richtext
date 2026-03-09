@@ -16,12 +16,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.LinearGradientShader
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Shader
 import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -29,6 +33,8 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.fastForEach
 import com.halilibo.richtext.ui.RichTextScope
 import com.halilibo.richtext.ui.Text
 import com.halilibo.richtext.ui.currentContentColor
@@ -39,6 +45,7 @@ import com.halilibo.richtext.ui.util.segmentIntoPhrases
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.pow
+import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
@@ -55,36 +62,118 @@ public fun RichTextScope.Text(
   isLeafText: Boolean = true,
   renderOptions: RichTextRenderOptions = RichTextRenderOptions(),
   sharedAnimationState: MarkdownAnimationState = remember { MarkdownAnimationState() },
+  decorations: RichTextDecorations = RichTextDecorations(),
   overflow: TextOverflow = TextOverflow.Clip,
-  maxLines: Int = Int.MAX_VALUE
+  maxLines: Int = Int.MAX_VALUE,
 ) {
   val style = currentRichTextStyle.stringStyle
   val contentColor = currentContentColor
-  val annotated = remember(text, style, contentColor) {
-    val resolvedStyle = (style ?: RichTextStringStyle.Default).resolveDefaults()
-    text.toAnnotatedString(resolvedStyle, contentColor)
+  val resolvedStyle = remember(style) {
+    (style ?: RichTextStringStyle.Default).resolveDefaults()
   }
-  val inlineContents = remember(text) { text.getInlineContents() }
-
-  val animatedText = if (renderOptions.animate && inlineContents.isEmpty()) {
-    rememberAnimatedText(
-      annotated = annotated,
+  val annotated = remember(text, resolvedStyle, contentColor, decorations) {
+    text.toAnnotatedString(resolvedStyle, contentColor, decorations)
+  }
+  val baseInlineContents = remember(text) { text.getInlineContents() }
+  val resolvedLinkDecorations = remember(text, decorations) {
+    text.resolveLinkDecorations(decorations)
+  }
+  val hasInlineIcons = remember(resolvedLinkDecorations) {
+    resolvedLinkDecorations.any { it.hasInlineContent() }
+  }
+  val decoratedTextResult = remember(
+    annotated,
+    baseInlineContents,
+    resolvedLinkDecorations,
+    hasInlineIcons,
+  ) {
+    if (hasInlineIcons) {
+      decorateAnnotatedStringWithLinkIcons(
+        annotated = annotated,
+        baseInlineContents = baseInlineContents,
+        linkDecorations = resolvedLinkDecorations,
+      )
+    } else {
+      DecoratedTextResult(
+        annotatedString = annotated,
+        inlineContents = baseInlineContents,
+        decoratedLinkRanges = resolvedLinkDecorations
+          .filter { it.underlineStyle !is UnderlineStyle.Solid }
+          .map { range ->
+            DecoratedLinkRange(
+              start = range.start,
+              end = range.end,
+              destination = range.destination,
+              underlineStyle = range.underlineStyle,
+              underlineColor = range.underlineColor,
+              linkStyleOverride = range.linkStyleOverride,
+            )
+          },
+      )
+    }
+  }
+  val inlineContents = decoratedTextResult.inlineContents
+  val decoratedLinkRanges = decoratedTextResult.decoratedLinkRanges
+  var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+  val underlineSpecs = remember(decoratedLinkRanges, resolvedStyle, contentColor) {
+    decoratedLinkRanges.mapNotNull { range ->
+      val linkStyle = range.linkStyleOverride
+        ?.invoke(resolvedStyle.linkStyle)
+        ?: resolvedStyle.linkStyle
+      val underlineColor = range.underlineColor
+        ?: linkStyle?.style?.color
+          ?.takeIf { it.isSpecified }
+        ?: contentColor
+      UnderlineSpec(
+        range = range,
+        color = underlineColor,
+      )
+    }
+  }
+  val animatedResult = if (renderOptions.animate && inlineContents.isEmpty()) {
+    rememberAnimatedTextResult(
+      annotated = decoratedTextResult.annotatedString,
       contentColor = contentColor,
       renderOptions = renderOptions,
       isLeafText = isLeafText,
       sharedAnimationState = sharedAnimationState,
     )
   } else {
-    annotated
+    null
+  }
+  val animatedText = animatedResult?.text ?: decoratedTextResult.annotatedString
+  val underlineAlphaForOffset = animatedResult?.alphaForOffset
+
+  val underlineModifier = if (underlineSpecs.isNotEmpty()) {
+    Modifier.drawWithContent {
+      drawContent()
+      val layoutResult = textLayoutResult ?: return@drawWithContent
+      underlineSpecs.fastForEach { spec ->
+        drawUnderline(
+          layoutResult = layoutResult,
+          start = spec.range.start,
+          end = spec.range.end,
+          underlineStyle = spec.range.underlineStyle,
+          color = spec.color,
+          alphaForOffset = underlineAlphaForOffset,
+        )
+      }
+    }
+  } else {
+    Modifier
   }
 
   if (inlineContents.isEmpty()) {
     Text(
       text = animatedText,
-      onTextLayout = onTextLayout,
+      onTextLayout = { layoutResult ->
+        textLayoutResult = layoutResult
+        onTextLayout(layoutResult)
+      },
       softWrap = softWrap,
       overflow = overflow,
-      maxLines = maxLines
+      maxLines = maxLines,
+      modifier = modifier.then(underlineModifier),
     )
   } else {
     val inlineTextConstraints = remember { mutableStateOf(Constraints()) }
@@ -95,12 +184,15 @@ public fun RichTextScope.Text(
 
     Text(
       text = animatedText,
-      onTextLayout = onTextLayout,
+      onTextLayout = { layoutResult ->
+        textLayoutResult = layoutResult
+        onTextLayout(layoutResult)
+      },
       inlineContent = inlineTextContents,
       softWrap = softWrap,
       overflow = overflow,
       maxLines = maxLines,
-      modifier = modifier.layout { measurable, constraints ->
+      modifier = modifier.then(underlineModifier).layout { measurable, constraints ->
         // Prepares the custom constraints InlineTextContents before they get measured.
         inlineTextConstraints.value = constraints.copy(minWidth = 0, minHeight = 0)
         val placeable = measurable.measure(constraints)
@@ -108,6 +200,85 @@ public fun RichTextScope.Text(
           placeable.place(0, 0)
         }
       },
+    )
+  }
+}
+
+private data class UnderlineSpec(
+  val range: DecoratedLinkRange,
+  val color: Color,
+)
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawUnderline(
+  layoutResult: TextLayoutResult,
+  start: Int,
+  end: Int,
+  underlineStyle: UnderlineStyle,
+  color: Color,
+  alphaForOffset: ((Int) -> Float)?,
+) {
+  val textLength = layoutResult.layoutInput.text.text.length
+  val clampedStart = start.coerceIn(0, textLength)
+  val clampedEnd = end.coerceIn(0, textLength)
+  if (clampedStart >= clampedEnd) return
+
+  val strokeWidthPx: Float
+  val offsetPx: Float
+  val pathEffect: PathEffect?
+  val cap: StrokeCap
+
+  with(this) {
+    when (underlineStyle) {
+      is UnderlineStyle.Solid -> {
+        strokeWidthPx = 1.dp.toPx()
+        offsetPx = 0.dp.toPx()
+        pathEffect = null
+        cap = StrokeCap.Butt
+      }
+      is UnderlineStyle.Dotted -> {
+        strokeWidthPx = underlineStyle.strokeWidth.toPx()
+        offsetPx = underlineStyle.offset.toPx()
+        val gapPx = underlineStyle.gap.toPx()
+        // Round-capped zero-length dashes render as true circular dots.
+        val patternGapPx = (gapPx + strokeWidthPx).coerceAtLeast(1f)
+        pathEffect = PathEffect.dashPathEffect(floatArrayOf(0f, patternGapPx), 0f)
+        cap = StrokeCap.Round
+      }
+      is UnderlineStyle.Dashed -> {
+        strokeWidthPx = underlineStyle.strokeWidth.toPx()
+        offsetPx = underlineStyle.offset.toPx()
+        val dashPx = underlineStyle.dash.toPx()
+        val gapPx = underlineStyle.gap.toPx()
+        pathEffect = PathEffect.dashPathEffect(floatArrayOf(dashPx, gapPx), 0f)
+        cap = StrokeCap.Butt
+      }
+    }
+  }
+
+  val startLine = layoutResult.getLineForOffset(clampedStart)
+  val endLine = layoutResult.getLineForOffset(clampedEnd - 1)
+  for (line in startLine..endLine) {
+    val lineStart = layoutResult.getLineStart(line)
+    val lineEnd = layoutResult.getLineEnd(line, visibleEnd = true)
+    val segmentStart = maxOf(clampedStart, lineStart)
+    val segmentEnd = minOf(clampedEnd, lineEnd)
+    if (segmentEnd <= segmentStart) continue
+
+    val startBox = layoutResult.getBoundingBox(segmentStart)
+    val endBox = layoutResult.getBoundingBox(segmentEnd - 1)
+    val y = layoutResult.getLineBaseline(line) + strokeWidthPx + offsetPx
+    val xStart = startBox.left.roundToInt().toFloat()
+    val xEnd = endBox.right.roundToInt().toFloat()
+
+    val alpha = alphaForOffset?.invoke(segmentEnd - 1)?.coerceIn(0f, 1f) ?: 1f
+    if (alpha <= 0f) continue
+    drawLine(
+      color = color.copy(alpha = color.alpha * alpha),
+      start = Offset(xStart, y),
+      end = Offset(xEnd, y),
+      strokeWidth = strokeWidthPx,
+      cap = cap,
+      pathEffect = pathEffect,
     )
   }
 }
@@ -139,14 +310,19 @@ public class MarkdownAnimationState {
     (lastAnimationStartMs - System.currentTimeMillis()).coerceAtLeast(0).toInt()
 }
 
+private data class AnimatedTextResult(
+  val text: AnnotatedString,
+  val alphaForOffset: (Int) -> Float,
+)
+
 @Composable
-private fun rememberAnimatedText(
+private fun rememberAnimatedTextResult(
   annotated: AnnotatedString,
   renderOptions: RichTextRenderOptions,
   contentColor: Color,
   sharedAnimationState: MarkdownAnimationState,
   isLeafText: Boolean,
-): AnnotatedString {
+): AnimatedTextResult {
   val coroutineScope = rememberCoroutineScope()
   val animations = remember { mutableStateMapOf<Int, TextAnimation>() }
   val textToRender = remember { mutableStateOf(AnnotatedString("")) }
@@ -157,11 +333,11 @@ private fun rememberAnimatedText(
     lastPhrases.value = phrases
     textToRender.value = phrases.makeCompletePhraseString(!isLeafText)
     phrases.phraseSegments
-      .filter { it > lastAnimationIndex.value }
+      .filter { it > lastAnimationIndex.intValue }
       .forEach { phraseIndex ->
         val animation = TextAnimation(phraseIndex)
         animations[phraseIndex] = animation
-        lastAnimationIndex.value = phraseIndex
+        lastAnimationIndex.intValue = phraseIndex
         coroutineScope.launch {
           sharedAnimationState.addAnimation(renderOptions)
           var hasAnimationFired = false
@@ -208,7 +384,7 @@ private fun rememberAnimatedText(
 
   // contentColor rarely changes, and it's not already a State. When contentColor changes, a new
   // AnnotatedString must be created using the updated contentColor value.
-  return remember(contentColor) {
+  val text = remember(contentColor) {
     // textToRender and the set of animations are tracked as States, and trigger the derivedStateOf
     // to return a new value in order to create a new AnnotatedString with the latest text and
     // animated Brushes.
@@ -218,28 +394,54 @@ private fun rememberAnimatedText(
     // the text will just be re-drawn, since the animated alpha state was read only inside
     // DynamicSolidColor during the draw phase.
     derivedStateOf {
-      textToRender.value.withDynamicColorPhrases(contentColor, animations.values)
+      textToRender.value.withDynamicColorPhrases(
+        contentColor = contentColor,
+        animations = animations.values,
+        onlyVisible = renderOptions.onlyRenderVisibleText,
+      )
     }
   }.value
+
+  return AnimatedTextResult(
+    text = text,
+    alphaForOffset = { offset ->
+      var bestStart = -1
+      var bestAlpha = 1f
+      animations.values.forEach { animation ->
+        if (animation.startIndex <= offset && animation.startIndex > bestStart) {
+          bestStart = animation.startIndex
+          bestAlpha = animation.alpha
+        }
+      }
+      bestAlpha
+    }
+  )
 }
 
 private class TextAnimation(val startIndex: Int) {
 
   var alpha by mutableFloatStateOf(0f)
+  val isVisible by derivedStateOf { alpha > 0f }
 }
 
 private fun AnnotatedString.withDynamicColorPhrases(
-  contentColor: Color, animations: Collection<TextAnimation>,
+  contentColor: Color,
+  animations: Collection<TextAnimation>,
+  onlyVisible: Boolean,
 ): AnnotatedString {
   if (text.isEmpty() || animations.isEmpty()) {
     return this
   }
   var remainingLength = length
   val modifiedTextSnippets = mutableListOf<AnnotatedString>()
+  var dropInvisible = onlyVisible
   for (animation in animations.sortedByDescending { it.startIndex }) {
     if (animation.startIndex >= remainingLength) continue
-    modifiedTextSnippets += subSequence(animation.startIndex, remainingLength)
-      .withDynamicColor(contentColor, alpha = { animation.alpha })
+    if (!dropInvisible || animation.isVisible) {
+      dropInvisible = false
+      modifiedTextSnippets += subSequence(animation.startIndex, remainingLength)
+        .withDynamicColor(contentColor, alpha = { animation.alpha })
+    }
     remainingLength = animation.startIndex
   }
   return buildAnnotatedString {
@@ -249,12 +451,66 @@ private fun AnnotatedString.withDynamicColorPhrases(
 }
 
 private fun AnnotatedString.withDynamicColor(color: Color, alpha: () -> Float): AnnotatedString {
+  val useDynamicColor = !maybeContainsEmojis()
+
   val subStyles = spanStyles.map {
-    it.copy(item = it.item.copy(brush = DynamicSolidColor(it.item.color, alpha)))
+    val style = it.item
+    if (useDynamicColor) {
+      it.copy(item = style.copy(brush = DynamicSolidColor(style.color) { style.alpha * alpha() }))
+    } else if (style.color.isSpecified) {
+      it.copy(item = style.copy(color = style.color.copy(alpha = style.color.alpha * alpha())))
+    } else {
+      it.copy(item = style.copy(brush = style.brush, alpha = alpha()))
+    }
   }
-  val fullStyle =
-    AnnotatedString.Range(SpanStyle(brush = DynamicSolidColor(color, alpha)), 0, length)
+  val fullStyle = AnnotatedString.Range(
+    item = if (useDynamicColor) {
+      SpanStyle(brush = DynamicSolidColor(color, alpha))
+    } else {
+      SpanStyle(brush = DynamicSolidColor(color) { 1f }, alpha = alpha())
+    },
+    start = 0,
+    end = length
+  )
   return AnnotatedString(text, subStyles + fullStyle)
+}
+
+private fun CharSequence.maybeContainsEmojis(): Boolean {
+  var i = 0
+  val n = length
+  while (i < n) {
+    val cp = Character.codePointAt(this, i)
+
+    // --- Quick accepts: common emoji blocks ---
+    val isEmoji = when (cp) {
+      // Misc Symbols + Dingbats + arrows subset that often render as emoji
+      in 0x2600..0x27BF -> true
+      // Enclosed CJK (e.g., 🈶, 🈚)
+      in 0x1F200..0x1F2FF -> true
+      // Misc Symbols & Pictographs
+      in 0x1F300..0x1F5FF -> true
+      // Emoticons
+      in 0x1F600..0x1F64F -> true
+      // Transport & Map
+      in 0x1F680..0x1F6FF -> true
+      // Supplemental Symbols & Pictographs
+      in 0x1F900..0x1F9FF -> true
+      // Symbols & Pictographs Extended-A (newer emoji live here)
+      in 0x1FA70..0x1FAFF -> true
+      // Regional indicators (flags as pairs, but single is enough for "contains")
+      in 0x1F1E6..0x1F1FF -> true
+      // Keycap base digits/#/* (paired with VS16 + COMBINING ENCLOSING KEYCAP, but base char is fine)
+      in 0x0030..0x0039, 0x0023, 0x002A -> true
+      // Variation Selector-16 forces emoji presentation for some BMP symbols
+      0xFE0F -> true
+      else -> false
+    }
+
+    if (isEmoji) return true
+
+    i += Character.charCount(cp)
+  }
+  return false
 }
 
 private fun AnnotatedString.getConsumableAnnotations(

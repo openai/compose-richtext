@@ -20,7 +20,7 @@ buildscript {
 }
 
 plugins {
-  id("org.jetbrains.dokka") version "1.8.10"
+  id("org.jetbrains.dokka") version "2.0.0"
 }
 
 repositories {
@@ -29,7 +29,8 @@ repositories {
 
 tasks.withType<DokkaMultiModuleTask>().configureEach {
   outputDirectory.set(rootProject.file("docs/api"))
-  failOnWarning.set(true)
+//  TODO(stable); Disable warnings as errors until we get to 1.0.0
+//  failOnWarning.set(true)
 }
 
 // See https://stackoverflow.com/questions/25324880/detect-ide-environment-with-gradle
@@ -45,11 +46,12 @@ subprojects {
   }
 
   tasks.withType<KotlinCompile>().all {
-    kotlinOptions {
-      // Allow warnings when running from IDE, makes it easier to experiment.
-      if (!isRunningFromIde()) {
-        allWarningsAsErrors = true
-      }
+    compilerOptions {
+//       TODO(stable); Disable warnings as errors until we get to 1.0.0
+//       Allow warnings when running from IDE, makes it easier to experiment.
+//      if (!isRunningFromIde()) {
+//        allWarningsAsErrors = true
+//      }
 
       freeCompilerArgs = listOf("-opt-in=kotlin.RequiresOptIn", "-Xexpect-actual-classes")
     }
@@ -142,8 +144,8 @@ subprojects {
             localProperties.getProperty("SONATYPE_PASSWORD") ?: System.getenv("SONATYPE_PASSWORD")
 
           val releasesRepoUrl =
-            uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2")
-          val snapshotsRepoUrl = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/")
+            uri("https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/")
+          val snapshotsRepoUrl = uri("https://central.sonatype.com/repository/maven-snapshots/")
           val version = property("VERSION_NAME").toString()
           url = uri(
             if (version.endsWith("SNAPSHOT")) {

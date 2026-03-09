@@ -13,6 +13,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.halilibo.richtext.ui.BlockQuote
@@ -32,6 +34,13 @@ import com.halilibo.richtext.ui.RichTextStyle
 import com.halilibo.richtext.ui.Table
 import com.halilibo.richtext.ui.WithStyle
 import com.halilibo.richtext.ui.material3.RichText
+import com.halilibo.richtext.ui.string.LinkDecoration
+import com.halilibo.richtext.ui.string.RichTextDecorations
+import com.halilibo.richtext.ui.string.RichTextString
+import com.halilibo.richtext.ui.string.Text as RichTextText
+import com.halilibo.richtext.ui.string.UnderlineStyle
+import com.halilibo.richtext.ui.string.richTextString
+import com.halilibo.richtext.ui.string.withFormat
 
 @Preview(widthDp = 300, heightDp = 1000)
 @Composable fun RichTextDemoOnWhite() {
@@ -61,6 +70,36 @@ import com.halilibo.richtext.ui.material3.RichText
     Text("Simple paragraph.")
     Text("Paragraph with\nmultiple lines.")
     Text("Paragraph with really long line that should be getting wrapped.")
+    val bodyTextColor = LocalContentColor.current
+    val dottedLinkDecorations = RichTextDecorations(
+      linkDecorations = listOf(
+        LinkDecoration(
+          matcher = { destination, _ -> destination.contains("dotted") },
+          underlineStyle = UnderlineStyle.Dotted(),
+          linkStyleOverride = { base ->
+            TextLinkStyles(
+              style = (base?.style ?: SpanStyle()).copy(color = bodyTextColor),
+              focusedStyle = base?.focusedStyle?.copy(color = bodyTextColor),
+              hoveredStyle = base?.hoveredStyle?.copy(color = bodyTextColor),
+              pressedStyle = base?.pressedStyle?.copy(color = bodyTextColor),
+            )
+          },
+        ),
+      ),
+    )
+    val dottedUnderlineText = richTextString {
+      append("Dotted underline with wrapping: ")
+      withFormat(RichTextString.Format.Link("https://example.com/dotted")) {
+        append(
+          "This is a long link that should wrap across multiple lines to show the " +
+              "dotted underline.",
+        )
+      }
+    }
+    RichTextText(
+      text = dottedUnderlineText,
+      decorations = dottedLinkDecorations,
+    )
     TextPreview()
 
     Heading(0, "Lists")
