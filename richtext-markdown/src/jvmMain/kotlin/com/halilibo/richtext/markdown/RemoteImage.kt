@@ -15,9 +15,8 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.skia.Image.Companion.makeFromEncoded
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
-import java.io.InputStream
 import java.net.HttpURLConnection
-import java.net.URL
+import java.net.URI
 import javax.imageio.ImageIO
 
 @Composable
@@ -51,13 +50,13 @@ private fun toByteArray(bitmap: BufferedImage): ByteArray {
 
 private suspend fun loadFullImage(source: String): BufferedImage? = withContext(Dispatchers.IO) {
   runCatching {
-    val url = URL(source)
-    val connection: HttpURLConnection = url.openConnection() as HttpURLConnection
+    val connection = URI(source).toURL().openConnection() as HttpURLConnection
     connection.connectTimeout = 5000
     connection.connect()
-
-    val input: InputStream = connection.inputStream
-    val bitmap: BufferedImage? = ImageIO.read(input)
-    bitmap
+    try {
+      connection.inputStream.use(ImageIO::read)
+    } finally {
+      connection.disconnect()
+    }
   }.getOrNull()
 }
