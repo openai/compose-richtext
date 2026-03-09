@@ -136,6 +136,10 @@ public fun RichTextScope.Table(
         rows.maxByOrNull { it.cells.size }?.cells?.size ?: 0
     )
   }
+  if (columns == 0) {
+    // Malformed tables can reach the renderer with no cells; skip them instead of crashing.
+    return
+  }
   val headerStyle = currentTextStyle.merge(tableStyle.headerTextStyle)
   val cellPadding = with(LocalDensity.current) {
     tableStyle.cellPadding!!.toDp()
