@@ -23,12 +23,22 @@ kotlin {
         api(project(":richtext-ui"))
       }
     }
-    val commonTest by getting
+    val commonTest by getting {
+      dependencies {
+        implementation(Kotlin.Test.common)
+        implementation(Kotlin.Test.annotations)
+      }
+    }
 
     val androidMain by getting {
       dependencies {
         implementation(Compose.coil)
         implementation(Compose.coilHttp)
+      }
+    }
+    val androidUnitTest by getting {
+      dependencies {
+        implementation(Kotlin.Test.jdk)
       }
     }
 
