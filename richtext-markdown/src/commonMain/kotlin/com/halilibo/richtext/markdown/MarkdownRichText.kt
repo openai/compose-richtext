@@ -6,6 +6,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.halilibo.richtext.markdown.node.AstBlockQuote
@@ -72,17 +73,53 @@ internal fun RichTextScope.MarkdownRichText(
   val richText = remember(astNode) {
     computeRichTextString(astNode, inlineContentOverride)
   }
+  val fillBlockWidth = astNode.type is AstParagraph || astNode.type is AstHeading
+  val blockTextDirection = when {
+    fillBlockWidth -> firstStrongLetterLayoutDirection(richText.text)
+    else -> null
+  }
+  val textModifier = if (fillBlockWidth) {
+    modifier.fillMaxWidth()
+  } else {
+    modifier
+  }
 
   Text(
     text = richText,
-    modifier = modifier,
+    modifier = textModifier,
     isLeafText = astNode.isLastInTree(),
     renderOptions = richTextRenderOptions,
     sharedAnimationState = markdownAnimationState,
     decorations = richTextDecorations,
+    textAlign = when (blockTextDirection) {
+      TextDirection.Rtl -> androidx.compose.ui.text.style.TextAlign.Right
+      TextDirection.Ltr -> androidx.compose.ui.text.style.TextAlign.Left
+      else -> androidx.compose.ui.text.style.TextAlign.Start
+    },
+    textDirection = blockTextDirection,
   )
 }
 
+internal fun firstStrongLetterLayoutDirection(text: String): TextDirection? {
+  for (char in text) {
+    if (!char.isLetter()) continue
+
+    when (Character.getDirectionality(char)) {
+      Character.DIRECTIONALITY_RIGHT_TO_LEFT,
+      Character.DIRECTIONALITY_RIGHT_TO_LEFT_ARABIC,
+      Character.DIRECTIONALITY_RIGHT_TO_LEFT_EMBEDDING,
+      Character.DIRECTIONALITY_RIGHT_TO_LEFT_OVERRIDE,
+      -> return TextDirection.Rtl
+
+      Character.DIRECTIONALITY_LEFT_TO_RIGHT,
+      Character.DIRECTIONALITY_LEFT_TO_RIGHT_EMBEDDING,
+      Character.DIRECTIONALITY_LEFT_TO_RIGHT_OVERRIDE,
+      -> return TextDirection.Ltr
+    }
+  }
+
+  return null
+}
 private fun AstNode?.isLastInTree(): Boolean = this?.links?.parent == null ||
     (links.next == null && links.parent.isLastInTree())
 

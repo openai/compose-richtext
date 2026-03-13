@@ -32,5 +32,11 @@ kotlin {
     val jvmMain by getting {
       kotlin.srcDir("src/commonJvmAndroid/kotlin")
     }
+    val jvmTest by getting {
+      kotlin.srcDir("src/jvmTest/kotlin")
+      dependencies {
+        implementation(Kotlin.Test.jdk)
+      }
+    }
   }
 }
