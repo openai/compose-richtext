@@ -91,11 +91,6 @@ internal fun RichTextScope.MarkdownRichText(
     renderOptions = richTextRenderOptions,
     sharedAnimationState = markdownAnimationState,
     decorations = richTextDecorations,
-    textAlign = when (blockTextDirection) {
-      TextDirection.Rtl -> androidx.compose.ui.text.style.TextAlign.Right
-      TextDirection.Ltr -> androidx.compose.ui.text.style.TextAlign.Left
-      else -> androidx.compose.ui.text.style.TextAlign.Start
-    },
     textDirection = blockTextDirection,
   )
 }

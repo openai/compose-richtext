@@ -32,7 +32,6 @@ import androidx.compose.ui.text.ParagraphStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
@@ -68,7 +67,6 @@ public fun RichTextScope.Text(
   decorations: RichTextDecorations = RichTextDecorations(),
   overflow: TextOverflow = TextOverflow.Clip,
   maxLines: Int = Int.MAX_VALUE,
-  textAlign: TextAlign? = null,
   textDirection: TextDirection? = null,
 ) {
   val style = currentRichTextStyle.stringStyle
@@ -147,10 +145,9 @@ public fun RichTextScope.Text(
     null
   }
   val animatedText = animatedResult?.text ?: decoratedTextResult.annotatedString
-  val paragraphStyledText = remember(animatedText, textAlign, textDirection) {
-    applyParagraphStyle(
+  val paragraphStyledText = remember(animatedText, textDirection) {
+    applyParagraphDirection(
       text = animatedText,
-      textAlign = textAlign,
       textDirection = textDirection,
     )
   }
@@ -216,16 +213,14 @@ public fun RichTextScope.Text(
   }
 }
 
-internal fun applyParagraphStyle(
+internal fun applyParagraphDirection(
   text: AnnotatedString,
-  textAlign: TextAlign?,
   textDirection: TextDirection?,
 ): AnnotatedString {
-  if (textAlign == null && textDirection == null) return text
+  if (textDirection == null) return text
 
   val paragraphStyle = ParagraphStyle(
-    textAlign = textAlign ?: TextAlign.Unspecified,
-    textDirection = textDirection ?: TextDirection.Unspecified,
+    textDirection = textDirection,
   )
 
   return buildAnnotatedString {
