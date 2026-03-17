@@ -2,10 +2,13 @@ package com.halilibo.richtext.ui.string
 
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.ParagraphStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertSame
+import kotlin.test.assertTrue
 
 class TextTest {
   @Test
@@ -33,5 +36,37 @@ class TextTest {
     val text = AnnotatedString("שלום")
 
     assertSame(text, applyParagraphDirection(text = text, textDirection = null))
+  }
+
+  @Test
+  fun `hasExplicitParagraphAlignment returns true for centered paragraphs`() {
+    val text = AnnotatedString(
+      text = "Hello",
+      paragraphStyles = listOf(
+        AnnotatedString.Range(
+          item = ParagraphStyle(textAlign = TextAlign.Center),
+          start = 0,
+          end = 5,
+        ),
+      ),
+    )
+
+    assertTrue(hasExplicitParagraphAlignment(text))
+  }
+
+  @Test
+  fun `hasExplicitParagraphAlignment ignores direction-only paragraphs`() {
+    val text = AnnotatedString(
+      text = "שלום",
+      paragraphStyles = listOf(
+        AnnotatedString.Range(
+          item = ParagraphStyle(textDirection = TextDirection.Rtl),
+          start = 0,
+          end = 4,
+        ),
+      ),
+    )
+
+    assertFalse(hasExplicitParagraphAlignment(text))
   }
 }

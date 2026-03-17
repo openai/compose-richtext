@@ -73,20 +73,14 @@ internal fun RichTextScope.MarkdownRichText(
   val richText = remember(astNode) {
     computeRichTextString(astNode, inlineContentOverride)
   }
-  val fillBlockWidth = astNode.type is AstParagraph || astNode.type is AstHeading
   val blockTextDirection = when {
-    fillBlockWidth -> firstStrongLetterLayoutDirection(richText.text)
+    astNode.type is AstParagraph || astNode.type is AstHeading -> firstStrongLetterLayoutDirection(richText.text)
     else -> null
-  }
-  val textModifier = if (fillBlockWidth) {
-    modifier.fillMaxWidth()
-  } else {
-    modifier
   }
 
   Text(
     text = richText,
-    modifier = textModifier,
+    modifier = modifier,
     isLeafText = astNode.isLastInTree(),
     renderOptions = richTextRenderOptions,
     sharedAnimationState = markdownAnimationState,

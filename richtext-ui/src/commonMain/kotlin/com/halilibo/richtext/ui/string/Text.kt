@@ -2,6 +2,7 @@ package com.halilibo.richtext.ui.string
 
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -32,6 +33,7 @@ import androidx.compose.ui.text.ParagraphStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
@@ -151,6 +153,11 @@ public fun RichTextScope.Text(
       textDirection = textDirection,
     )
   }
+  val textModifier = if (hasExplicitParagraphAlignment(paragraphStyledText)) {
+    modifier.fillMaxWidth()
+  } else {
+    modifier
+  }
   val underlineAlphaForOffset = animatedResult?.alphaForOffset
 
   val underlineModifier = if (underlineSpecs.isNotEmpty()) {
@@ -182,7 +189,7 @@ public fun RichTextScope.Text(
       softWrap = softWrap,
       overflow = overflow,
       maxLines = maxLines,
-      modifier = modifier.then(underlineModifier),
+      modifier = textModifier.then(underlineModifier),
     )
   } else {
     val inlineTextConstraints = remember { mutableStateOf(Constraints()) }
@@ -201,7 +208,7 @@ public fun RichTextScope.Text(
       softWrap = softWrap,
       overflow = overflow,
       maxLines = maxLines,
-      modifier = modifier.then(underlineModifier).layout { measurable, constraints ->
+      modifier = textModifier.then(underlineModifier).layout { measurable, constraints ->
         // Prepares the custom constraints InlineTextContents before they get measured.
         inlineTextConstraints.value = constraints.copy(minWidth = 0, minHeight = 0)
         val placeable = measurable.measure(constraints)
@@ -228,6 +235,9 @@ internal fun applyParagraphDirection(
     addStyle(paragraphStyle, 0, text.length)
   }
 }
+
+internal fun hasExplicitParagraphAlignment(text: AnnotatedString): Boolean =
+  text.paragraphStyles.any { it.item.textAlign != TextAlign.Unspecified }
 
 private data class UnderlineSpec(
   val range: DecoratedLinkRange,
