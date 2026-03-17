@@ -9,7 +9,7 @@ import kotlin.test.assertSame
 
 class TextTest {
   @Test
-  fun `applies paragraph direction only when needed`() {
+  fun `applyParagraphDirection adds paragraph direction style`() {
     val text = AnnotatedString("שלום")
     assertEquals(
       listOf(
@@ -26,6 +26,12 @@ class TextTest {
         textDirection = TextDirection.Rtl,
       ).paragraphStyles,
     )
+  }
+
+  @Test
+  fun `applyParagraphDirection returns original text when direction is null`() {
+    val text = AnnotatedString("שלום")
+
     assertSame(text, applyParagraphDirection(text = text, textDirection = null))
   }
 }
