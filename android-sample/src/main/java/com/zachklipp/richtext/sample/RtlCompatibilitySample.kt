@@ -1,7 +1,9 @@
 package com.zachklipp.richtext.sample
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -22,51 +24,104 @@ import androidx.compose.ui.unit.dp
 import com.halilibo.richtext.commonmark.Markdown
 import com.halilibo.richtext.ui.material3.RichText
 
-@Preview(widthDp = 420, heightDp = 1000, showBackground = true)
+@Preview(name = "RTL Matrix Narrow", widthDp = 420, heightDp = 1600, showBackground = true)
 @Composable
-private fun RtlCompatibilityLtrPreview() {
+private fun RtlCompatibilityNarrowPreview() {
   SampleTheme {
     Surface {
-      RtlCompatibilitySample(layoutDirection = LayoutDirection.Ltr)
+      RtlCompatibilitySample()
     }
   }
 }
 
-@Preview(widthDp = 420, heightDp = 1000, showBackground = true)
+@Preview(name = "RTL Matrix Wide", widthDp = 960, heightDp = 1200, showBackground = true)
 @Composable
-private fun RtlCompatibilityRtlPreview() {
+private fun RtlCompatibilityWidePreview() {
   SampleTheme {
     Surface {
-      RtlCompatibilitySample(layoutDirection = LayoutDirection.Rtl)
+      RtlCompatibilitySample()
     }
   }
 }
 
 @Composable
-fun RtlCompatibilitySample(
-  layoutDirection: LayoutDirection = LayoutDirection.Ltr,
-) {
-  CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
+fun RtlCompatibilitySample() {
+  BoxWithConstraints(
+    modifier = Modifier
+      .fillMaxWidth()
+      .verticalScroll(rememberScrollState())
+      .padding(16.dp),
+  ) {
+    val isWideLayout = maxWidth >= 720.dp
+
     Column(
-      modifier = Modifier
-        .fillMaxWidth()
-        .verticalScroll(rememberScrollState())
-        .padding(16.dp),
+      modifier = Modifier.fillMaxWidth(),
       verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
       Text(
-        text = if (layoutDirection == LayoutDirection.Rtl) "RTL UI" else "LTR UI",
-        style = MaterialTheme.typography.headlineSmall,
-        fontWeight = FontWeight.Bold,
+        text = "Compare the same markdown under LTR and RTL layout directions.",
+        style = MaterialTheme.typography.bodyLarge,
       )
-      MarkdownCaseCard(
-        title = "English Content",
-        markdown = englishMarkdown,
-      )
-      MarkdownCaseCard(
-        title = "Hebrew Content",
-        markdown = hebrewMarkdown,
-      )
+
+      if (isWideLayout) {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+          layoutDirectionPanels.forEach { panel ->
+            LayoutDirectionPanel(
+              title = panel.title,
+              layoutDirection = panel.layoutDirection,
+              modifier = Modifier.weight(1f),
+            )
+          }
+        }
+      } else {
+        Column(
+          modifier = Modifier.fillMaxWidth(),
+          verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+          layoutDirectionPanels.forEach { panel ->
+            LayoutDirectionPanel(
+              title = panel.title,
+              layoutDirection = panel.layoutDirection,
+            )
+          }
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun LayoutDirectionPanel(
+  title: String,
+  layoutDirection: LayoutDirection,
+  modifier: Modifier = Modifier,
+) {
+  CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
+    Card(
+      modifier = modifier.fillMaxWidth(),
+      elevation = CardDefaults.elevatedCardElevation(),
+    ) {
+      Column(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+      ) {
+        Text(
+          text = title,
+          style = MaterialTheme.typography.headlineSmall,
+          fontWeight = FontWeight.Bold,
+        )
+        markdownCases.forEach { previewCase ->
+          MarkdownCaseCard(
+            title = previewCase.title,
+            markdown = previewCase.markdown,
+          )
+        }
+      }
     }
   }
 }
@@ -98,26 +153,64 @@ private fun MarkdownCaseCard(
   }
 }
 
-private val englishMarkdown = """
-  # Title English
+private data class LayoutDirectionPanelModel(
+  val title: String,
+  val layoutDirection: LayoutDirection,
+)
 
-  Text in English and then a [link](https://example.com) and more text.
+private data class MarkdownCase(
+  val title: String,
+  val markdown: String,
+)
 
-  A list with both languages:
-  1. English
-  2. עברית
+private val layoutDirectionPanels = listOf(
+  LayoutDirectionPanelModel(
+    title = "LTR UI",
+    layoutDirection = LayoutDirection.Ltr,
+  ),
+  LayoutDirectionPanelModel(
+    title = "RTL UI",
+    layoutDirection = LayoutDirection.Rtl,
+  ),
+)
 
-  <p align="right">Right</p>
-""".trimIndent()
+private val markdownCases = listOf(
+  MarkdownCase(
+    title = "English-first paragraph",
+    markdown = """
+      # English heading
 
-private val hebrewMarkdown = """
-  # כותרת בעברית
+      This paragraph starts in English, links to [example.com](https://example.com),
+      then mentions עברית before ending in English.
 
-  טקסט בעברית ואז [קישור](https://example.com) ועוד טקסט.
+      > English quote with a little עברית mixed in.
+    """.trimIndent(),
+  ),
+  MarkdownCase(
+    title = "Hebrew-first paragraph",
+    markdown = """
+      # כותרת בעברית
 
-  רשימה עם שתי השפות:
-  1. עברית
-  2. English
+      הפסקה הזאת מתחילה בעברית, מוסיפה [קישור](https://example.com),
+      ואז משלבת English לפני הסיום.
 
-  <p align="right">ימין</p>
-""".trimIndent()
+      > ציטוט בעברית עם English בפנים.
+    """.trimIndent(),
+  ),
+  MarkdownCase(
+    title = "Lists and nesting",
+    markdown = """
+      1. English item
+         - Nested עברית item
+      2. פריט בעברית
+         - Nested English item
+    """.trimIndent(),
+  ),
+  MarkdownCase(
+    title = "HTML alignment blocks",
+    markdown = """
+      <p align="left">Left aligned English block.</p>
+      <p align="right">בלוק מיושר לימין.</p>
+    """.trimIndent(),
+  ),
+)
