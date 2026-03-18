@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.halilibo.richtext.commonmark.Markdown
 import com.halilibo.richtext.ui.material3.RichText
 
-@Preview(name = "RTL Matrix Narrow", widthDp = 420, heightDp = 1600, showBackground = true)
+@Preview(name = "RTL Preview Narrow", widthDp = 420, heightDp = 1600, showBackground = true)
 @Composable
 private fun RtlCompatibilityNarrowPreview() {
   SampleTheme {
@@ -34,7 +34,7 @@ private fun RtlCompatibilityNarrowPreview() {
   }
 }
 
-@Preview(name = "RTL Matrix Wide", widthDp = 960, heightDp = 1200, showBackground = true)
+@Preview(name = "RTL Preview Wide", widthDp = 960, heightDp = 1200, showBackground = true)
 @Composable
 private fun RtlCompatibilityWidePreview() {
   SampleTheme {
