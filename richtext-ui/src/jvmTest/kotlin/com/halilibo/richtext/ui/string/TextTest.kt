@@ -6,25 +6,25 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertSame
-import kotlin.test.assertTrue
 
 class TextTest {
   @Test
-  fun `applyParagraphDirection adds paragraph direction style`() {
+  fun `applyParagraphStyle adds directional paragraph layout`() {
     val text = AnnotatedString("שלום")
+
     assertEquals(
       listOf(
         AnnotatedString.Range(
           item = ParagraphStyle(
+            textAlign = TextAlign.Right,
             textDirection = TextDirection.Rtl,
           ),
           start = 0,
           end = text.length,
         ),
       ),
-      applyParagraphDirection(
+      applyParagraphStyle(
         text = text,
         textDirection = TextDirection.Rtl,
       ).paragraphStyles,
@@ -32,14 +32,14 @@ class TextTest {
   }
 
   @Test
-  fun `applyParagraphDirection returns original text when direction is null`() {
+  fun `applyParagraphStyle returns original text when direction is null`() {
     val text = AnnotatedString("שלום")
 
-    assertSame(text, applyParagraphDirection(text = text, textDirection = null))
+    assertSame(text, applyParagraphStyle(text = text, textDirection = null))
   }
 
   @Test
-  fun `shouldFillWidthForExplicitParagraphAlignment returns false when opt in is disabled`() {
+  fun `applyParagraphStyle keeps centered paragraphs centered`() {
     val text = AnnotatedString(
       text = "Hello",
       paragraphStyles = listOf(
@@ -51,53 +51,86 @@ class TextTest {
       ),
     )
 
-    assertFalse(
-      shouldFillWidthForExplicitParagraphAlignment(
+    assertEquals(
+      listOf(
+        AnnotatedString.Range(
+          item = ParagraphStyle(
+            textAlign = TextAlign.Center,
+          ),
+          start = 0,
+          end = 5,
+        ),
+        AnnotatedString.Range(
+          item = ParagraphStyle(
+            textAlign = TextAlign.Left,
+            textDirection = TextDirection.Ltr,
+          ),
+          start = 0,
+          end = 5,
+        ),
+        AnnotatedString.Range(
+          item = ParagraphStyle(
+            textAlign = TextAlign.Center,
+            textDirection = TextDirection.Ltr,
+          ),
+          start = 0,
+          end = 5,
+        ),
+      ),
+      applyParagraphStyle(
         text = text,
-        fillWidthForExplicitParagraphAlignment = false,
-      )
+        textDirection = TextDirection.Ltr,
+      ).paragraphStyles,
     )
   }
 
   @Test
-  fun `shouldFillWidthForExplicitParagraphAlignment ignores direction only paragraphs`() {
+  fun `applyParagraphStyle preserves explicit text direction overrides`() {
     val text = AnnotatedString(
       text = "שלום",
       paragraphStyles = listOf(
         AnnotatedString.Range(
-          item = ParagraphStyle(textDirection = TextDirection.Rtl),
+          item = ParagraphStyle(
+            textAlign = TextAlign.Center,
+            textDirection = TextDirection.Rtl,
+          ),
           start = 0,
           end = 4,
         ),
       ),
     )
 
-    assertFalse(
-      shouldFillWidthForExplicitParagraphAlignment(
-        text = text,
-        fillWidthForExplicitParagraphAlignment = true,
-      )
-    )
-  }
-
-  @Test
-  fun `shouldFillWidthForExplicitParagraphAlignment returns true for centered paragraphs when enabled`() {
-    val text = AnnotatedString(
-      text = "Hello",
-      paragraphStyles = listOf(
+    assertEquals(
+      listOf(
         AnnotatedString.Range(
-          item = ParagraphStyle(textAlign = TextAlign.Center),
+          item = ParagraphStyle(
+            textAlign = TextAlign.Center,
+            textDirection = TextDirection.Rtl,
+          ),
           start = 0,
-          end = 5,
+          end = 4,
+        ),
+        AnnotatedString.Range(
+          item = ParagraphStyle(
+            textAlign = TextAlign.Left,
+            textDirection = TextDirection.Ltr,
+          ),
+          start = 0,
+          end = 4,
+        ),
+        AnnotatedString.Range(
+          item = ParagraphStyle(
+            textAlign = TextAlign.Center,
+            textDirection = TextDirection.Rtl,
+          ),
+          start = 0,
+          end = 4,
         ),
       ),
-    )
-
-    assertTrue(
-      shouldFillWidthForExplicitParagraphAlignment(
+      applyParagraphStyle(
         text = text,
-        fillWidthForExplicitParagraphAlignment = true,
-      )
+        textDirection = TextDirection.Ltr,
+      ).paragraphStyles,
     )
   }
 }

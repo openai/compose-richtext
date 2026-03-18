@@ -82,7 +82,7 @@ public fun RichTextScope.BasicMarkdown(
   inlineContentOverride: InlineContentOverride? = null,
   richTextRenderOptions: RichTextRenderOptions = RichTextRenderOptions.Default,
   richTextDecorations: RichTextDecorations = RichTextDecorations(),
-  fillWidthForExplicitParagraphAlignment: Boolean = false,
+  textBlockModifier: Modifier = Modifier,
   astBlockNodeComposer: AstBlockNodeComposer? = null,
 ) {
   RecursiveRenderMarkdownAst(
@@ -92,7 +92,7 @@ public fun RichTextScope.BasicMarkdown(
     richTextRenderOptions = richTextRenderOptions,
     richTextDecorations = richTextDecorations,
     markdownAnimationState = remember { MarkdownAnimationState() },
-    fillWidthForExplicitParagraphAlignment = fillWidthForExplicitParagraphAlignment,
+    textBlockModifier = textBlockModifier,
     astNodeComposer = astBlockNodeComposer,
   )
 }
@@ -160,7 +160,7 @@ internal fun RichTextScope.RecursiveRenderMarkdownAst(
   richTextRenderOptions: RichTextRenderOptions,
   richTextDecorations: RichTextDecorations,
   markdownAnimationState: MarkdownAnimationState,
-  fillWidthForExplicitParagraphAlignment: Boolean,
+  textBlockModifier: Modifier,
   astNodeComposer: AstBlockNodeComposer?
 ) {
   astNode ?: return
@@ -173,7 +173,7 @@ internal fun RichTextScope.RecursiveRenderMarkdownAst(
         richTextRenderOptions,
         richTextDecorations,
         markdownAnimationState,
-        fillWidthForExplicitParagraphAlignment,
+        textBlockModifier,
         astNodeComposer,
       )
     } == true) {
@@ -200,7 +200,7 @@ internal fun RichTextScope.RecursiveRenderMarkdownAst(
           richTextRenderOptions = richTextRenderOptions,
           richTextDecorations = richTextDecorations,
           markdownAnimationState = markdownAnimationState,
-          fillWidthForExplicitParagraphAlignment = fillWidthForExplicitParagraphAlignment,
+          textBlockModifier = textBlockModifier,
           astNodeComposer = astNodeComposer
         )
       }
@@ -212,7 +212,7 @@ internal fun RichTextScope.RecursiveRenderMarkdownAst(
       richTextRenderOptions = richTextRenderOptions,
       richTextDecorations = richTextDecorations,
       markdownAnimationState = markdownAnimationState,
-      fillWidthForExplicitParagraphAlignment = fillWidthForExplicitParagraphAlignment,
+      textBlockModifier = textBlockModifier,
       visitChildren = {
         renderChildren(
           node = it,
@@ -221,7 +221,7 @@ internal fun RichTextScope.RecursiveRenderMarkdownAst(
           richTextRenderOptions = richTextRenderOptions,
           richTextDecorations = richTextDecorations,
           markdownAnimationState = markdownAnimationState,
-          fillWidthForExplicitParagraphAlignment = fillWidthForExplicitParagraphAlignment,
+          textBlockModifier = textBlockModifier,
           astNodeComposer = astNodeComposer
         )
       }
@@ -236,7 +236,7 @@ private fun RichTextScope.ComposeDefaultAstNode(
   richTextRenderOptions: RichTextRenderOptions,
   richTextDecorations: RichTextDecorations,
   markdownAnimationState: MarkdownAnimationState,
-  fillWidthForExplicitParagraphAlignment: Boolean,
+  textBlockModifier: Modifier,
   visitChildren: @Composable (AstNode) -> Unit,
 ) {
   when (val astNodeType = astNode.type) {
@@ -298,8 +298,8 @@ private fun RichTextScope.ComposeDefaultAstNode(
             richTextRenderOptions,
             richTextDecorations,
             markdownAnimationState,
-            fillWidthForExplicitParagraphAlignment,
-            modifier = Modifier.semantics { heading() },
+            modifier = textBlockModifier
+              .semantics { heading() },
           )
         }
       }
@@ -340,7 +340,7 @@ private fun RichTextScope.ComposeDefaultAstNode(
           richTextRenderOptions,
           richTextDecorations,
           markdownAnimationState,
-          fillWidthForExplicitParagraphAlignment,
+          modifier = textBlockModifier,
         )
       }
 
@@ -351,7 +351,6 @@ private fun RichTextScope.ComposeDefaultAstNode(
           richTextRenderOptions,
           richTextDecorations,
           markdownAnimationState,
-          fillWidthForExplicitParagraphAlignment,
         )
       }
       // This should almost never happen. All the possible text
@@ -395,7 +394,7 @@ internal fun RichTextScope.renderChildren(
   richTextRenderOptions: RichTextRenderOptions,
   richTextDecorations: RichTextDecorations,
   markdownAnimationState: MarkdownAnimationState,
-  fillWidthForExplicitParagraphAlignment: Boolean,
+  textBlockModifier: Modifier,
   astNodeComposer: AstBlockNodeComposer?
 ) {
   node?.childrenSequence()?.forEach {
@@ -406,7 +405,7 @@ internal fun RichTextScope.renderChildren(
       richTextRenderOptions = richTextRenderOptions,
       richTextDecorations = richTextDecorations,
       markdownAnimationState = markdownAnimationState,
-      fillWidthForExplicitParagraphAlignment = fillWidthForExplicitParagraphAlignment,
+      textBlockModifier = textBlockModifier,
       astNodeComposer = astNodeComposer,
     )
   }

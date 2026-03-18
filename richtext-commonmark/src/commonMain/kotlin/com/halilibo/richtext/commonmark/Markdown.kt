@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.Modifier
 import com.halilibo.richtext.markdown.AstBlockNodeComposer
 import com.halilibo.richtext.markdown.BasicMarkdown
 import com.halilibo.richtext.markdown.ContentOverride
@@ -30,7 +31,7 @@ public fun RichTextScope.Markdown(
   markdownParseOptions: CommonMarkdownParseOptions = CommonMarkdownParseOptions.Default,
   richtextRenderOptions: RichTextRenderOptions = RichTextRenderOptions.Default,
   richTextDecorations: RichTextDecorations = RichTextDecorations(),
-  fillWidthForExplicitParagraphAlignment: Boolean = false,
+  textBlockModifier: Modifier = Modifier,
   contentOverride: ContentOverride? = null,
   inlineContentOverride: InlineContentOverride? = null,
   astBlockNodeComposer: AstBlockNodeComposer? = null
@@ -54,7 +55,7 @@ public fun RichTextScope.Markdown(
       inlineContentOverride = inlineContentOverride,
       richTextRenderOptions = richtextRenderOptions,
       richTextDecorations = richTextDecorations,
-      fillWidthForExplicitParagraphAlignment = fillWidthForExplicitParagraphAlignment,
+      textBlockModifier = textBlockModifier,
       astBlockNodeComposer = astBlockNodeComposer,
     )
   }
@@ -71,7 +72,7 @@ public fun RichTextScope.Markdown(
   content: Node,
   richtextRenderOptions: RichTextRenderOptions = RichTextRenderOptions.Default,
   richTextDecorations: RichTextDecorations = RichTextDecorations(),
-  fillWidthForExplicitParagraphAlignment: Boolean = false,
+  textBlockModifier: Modifier = Modifier,
   contentOverride: ContentOverride? = null,
   inlineContentOverride: InlineContentOverride? = null,
   astBlockNodeComposer: AstBlockNodeComposer? = null
@@ -83,7 +84,7 @@ public fun RichTextScope.Markdown(
     inlineContentOverride,
     richtextRenderOptions,
     richTextDecorations,
-    fillWidthForExplicitParagraphAlignment,
+    textBlockModifier,
     astBlockNodeComposer,
   )
 }

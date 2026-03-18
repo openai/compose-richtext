@@ -2,7 +2,6 @@ package com.halilibo.richtext.ui.string
 
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -70,7 +69,6 @@ public fun RichTextScope.Text(
   overflow: TextOverflow = TextOverflow.Clip,
   maxLines: Int = Int.MAX_VALUE,
   textDirection: TextDirection? = null,
-  fillWidthForExplicitParagraphAlignment: Boolean = false,
 ) {
   val style = currentRichTextStyle.stringStyle
   val contentColor = currentContentColor
@@ -149,20 +147,10 @@ public fun RichTextScope.Text(
   }
   val animatedText = animatedResult?.text ?: decoratedTextResult.annotatedString
   val paragraphStyledText = remember(animatedText, textDirection) {
-    applyParagraphDirection(
+    applyParagraphStyle(
       text = animatedText,
       textDirection = textDirection,
     )
-  }
-  val textModifier = if (
-    shouldFillWidthForExplicitParagraphAlignment(
-      text = paragraphStyledText,
-      fillWidthForExplicitParagraphAlignment = fillWidthForExplicitParagraphAlignment,
-    )
-  ) {
-    modifier.fillMaxWidth()
-  } else {
-    modifier
   }
   val underlineAlphaForOffset = animatedResult?.alphaForOffset
 
@@ -195,7 +183,7 @@ public fun RichTextScope.Text(
       softWrap = softWrap,
       overflow = overflow,
       maxLines = maxLines,
-      modifier = textModifier.then(underlineModifier),
+      modifier = modifier.then(underlineModifier),
     )
   } else {
     val inlineTextConstraints = remember { mutableStateOf(Constraints()) }
@@ -214,7 +202,7 @@ public fun RichTextScope.Text(
       softWrap = softWrap,
       overflow = overflow,
       maxLines = maxLines,
-      modifier = textModifier.then(underlineModifier).layout { measurable, constraints ->
+      modifier = modifier.then(underlineModifier).layout { measurable, constraints ->
         // Prepares the custom constraints InlineTextContents before they get measured.
         inlineTextConstraints.value = constraints.copy(minWidth = 0, minHeight = 0)
         val placeable = measurable.measure(constraints)
@@ -226,27 +214,33 @@ public fun RichTextScope.Text(
   }
 }
 
-internal fun applyParagraphDirection(
+internal fun applyParagraphStyle(
   text: AnnotatedString,
   textDirection: TextDirection?,
 ): AnnotatedString {
   if (textDirection == null) return text
 
   val paragraphStyle = ParagraphStyle(
+    textAlign = when (textDirection) {
+      TextDirection.Rtl -> TextAlign.Right
+      TextDirection.Ltr -> TextAlign.Left
+      else -> TextAlign.Unspecified
+    },
     textDirection = textDirection,
   )
 
   return buildAnnotatedString {
     append(text)
     addStyle(paragraphStyle, 0, text.length)
+    text.paragraphStyles.forEach { range ->
+      addStyle(
+        paragraphStyle.merge(range.item),
+        range.start,
+        range.end,
+      )
+    }
   }
 }
-
-internal fun shouldFillWidthForExplicitParagraphAlignment(
-  text: AnnotatedString,
-  fillWidthForExplicitParagraphAlignment: Boolean,
-): Boolean = fillWidthForExplicitParagraphAlignment &&
-  text.paragraphStyles.any { it.item.textAlign != TextAlign.Unspecified }
 
 private data class UnderlineSpec(
   val range: DecoratedLinkRange,

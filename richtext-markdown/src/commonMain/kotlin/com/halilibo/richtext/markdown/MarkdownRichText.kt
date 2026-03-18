@@ -67,7 +67,6 @@ internal fun RichTextScope.MarkdownRichText(
   richTextRenderOptions: RichTextRenderOptions,
   richTextDecorations: RichTextDecorations,
   markdownAnimationState: MarkdownAnimationState,
-  fillWidthForExplicitParagraphAlignment: Boolean,
   modifier: Modifier = Modifier,
 ) {
   // Assume that only RichText nodes reside below this level.
@@ -87,7 +86,6 @@ internal fun RichTextScope.MarkdownRichText(
     sharedAnimationState = markdownAnimationState,
     decorations = richTextDecorations,
     textDirection = blockTextDirection,
-    fillWidthForExplicitParagraphAlignment = fillWidthForExplicitParagraphAlignment,
   )
 }
 
