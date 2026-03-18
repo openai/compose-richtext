@@ -6,11 +6,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.ui.Modifier
 import com.halilibo.richtext.markdown.AstBlockNodeComposer
 import com.halilibo.richtext.markdown.BasicMarkdown
 import com.halilibo.richtext.markdown.ContentOverride
 import com.halilibo.richtext.markdown.InlineContentOverride
+import com.halilibo.richtext.markdown.TextBlockWidth
 import com.halilibo.richtext.markdown.node.AstNode
 import com.halilibo.richtext.ui.RichTextScope
 import com.halilibo.richtext.ui.string.RichTextDecorations
@@ -31,7 +31,7 @@ public fun RichTextScope.Markdown(
   markdownParseOptions: CommonMarkdownParseOptions = CommonMarkdownParseOptions.Default,
   richtextRenderOptions: RichTextRenderOptions = RichTextRenderOptions.Default,
   richTextDecorations: RichTextDecorations = RichTextDecorations(),
-  textBlockModifier: Modifier = Modifier,
+  textBlockWidth: TextBlockWidth = TextBlockWidth.WrapContent,
   contentOverride: ContentOverride? = null,
   inlineContentOverride: InlineContentOverride? = null,
   astBlockNodeComposer: AstBlockNodeComposer? = null
@@ -55,7 +55,7 @@ public fun RichTextScope.Markdown(
       inlineContentOverride = inlineContentOverride,
       richTextRenderOptions = richtextRenderOptions,
       richTextDecorations = richTextDecorations,
-      textBlockModifier = textBlockModifier,
+      textBlockWidth = textBlockWidth,
       astBlockNodeComposer = astBlockNodeComposer,
     )
   }
@@ -72,7 +72,7 @@ public fun RichTextScope.Markdown(
   content: Node,
   richtextRenderOptions: RichTextRenderOptions = RichTextRenderOptions.Default,
   richTextDecorations: RichTextDecorations = RichTextDecorations(),
-  textBlockModifier: Modifier = Modifier,
+  textBlockWidth: TextBlockWidth = TextBlockWidth.WrapContent,
   contentOverride: ContentOverride? = null,
   inlineContentOverride: InlineContentOverride? = null,
   astBlockNodeComposer: AstBlockNodeComposer? = null
@@ -84,7 +84,7 @@ public fun RichTextScope.Markdown(
     inlineContentOverride,
     richtextRenderOptions,
     richTextDecorations,
-    textBlockModifier,
+    textBlockWidth,
     astBlockNodeComposer,
   )
 }

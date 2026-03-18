@@ -1,5 +1,6 @@
 package com.halilibo.richtext.markdown
 
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -82,7 +83,7 @@ public fun RichTextScope.BasicMarkdown(
   inlineContentOverride: InlineContentOverride? = null,
   richTextRenderOptions: RichTextRenderOptions = RichTextRenderOptions.Default,
   richTextDecorations: RichTextDecorations = RichTextDecorations(),
-  textBlockModifier: Modifier = Modifier,
+  textBlockWidth: TextBlockWidth = TextBlockWidth.WrapContent,
   astBlockNodeComposer: AstBlockNodeComposer? = null,
 ) {
   RecursiveRenderMarkdownAst(
@@ -92,7 +93,7 @@ public fun RichTextScope.BasicMarkdown(
     richTextRenderOptions = richTextRenderOptions,
     richTextDecorations = richTextDecorations,
     markdownAnimationState = remember { MarkdownAnimationState() },
-    textBlockModifier = textBlockModifier,
+    textBlockWidth = textBlockWidth,
     astNodeComposer = astBlockNodeComposer,
   )
 }
@@ -160,7 +161,7 @@ internal fun RichTextScope.RecursiveRenderMarkdownAst(
   richTextRenderOptions: RichTextRenderOptions,
   richTextDecorations: RichTextDecorations,
   markdownAnimationState: MarkdownAnimationState,
-  textBlockModifier: Modifier,
+  textBlockWidth: TextBlockWidth,
   astNodeComposer: AstBlockNodeComposer?
 ) {
   astNode ?: return
@@ -173,7 +174,7 @@ internal fun RichTextScope.RecursiveRenderMarkdownAst(
         richTextRenderOptions,
         richTextDecorations,
         markdownAnimationState,
-        textBlockModifier,
+        textBlockWidth,
         astNodeComposer,
       )
     } == true) {
@@ -200,7 +201,7 @@ internal fun RichTextScope.RecursiveRenderMarkdownAst(
           richTextRenderOptions = richTextRenderOptions,
           richTextDecorations = richTextDecorations,
           markdownAnimationState = markdownAnimationState,
-          textBlockModifier = textBlockModifier,
+          textBlockWidth = textBlockWidth,
           astNodeComposer = astNodeComposer
         )
       }
@@ -212,7 +213,7 @@ internal fun RichTextScope.RecursiveRenderMarkdownAst(
       richTextRenderOptions = richTextRenderOptions,
       richTextDecorations = richTextDecorations,
       markdownAnimationState = markdownAnimationState,
-      textBlockModifier = textBlockModifier,
+      textBlockWidth = textBlockWidth,
       visitChildren = {
         renderChildren(
           node = it,
@@ -221,7 +222,7 @@ internal fun RichTextScope.RecursiveRenderMarkdownAst(
           richTextRenderOptions = richTextRenderOptions,
           richTextDecorations = richTextDecorations,
           markdownAnimationState = markdownAnimationState,
-          textBlockModifier = textBlockModifier,
+          textBlockWidth = textBlockWidth,
           astNodeComposer = astNodeComposer
         )
       }
@@ -236,9 +237,15 @@ private fun RichTextScope.ComposeDefaultAstNode(
   richTextRenderOptions: RichTextRenderOptions,
   richTextDecorations: RichTextDecorations,
   markdownAnimationState: MarkdownAnimationState,
-  textBlockModifier: Modifier,
+  textBlockWidth: TextBlockWidth,
   visitChildren: @Composable (AstNode) -> Unit,
 ) {
+  val textBlockModifier = if (textBlockWidth == TextBlockWidth.FillMaxWidth) {
+    Modifier.fillMaxWidth()
+  } else {
+    Modifier
+  }
+
   when (val astNodeType = astNode.type) {
       is AstDocument -> visitChildren(astNode)
       is AstBlockQuote -> {
@@ -394,7 +401,7 @@ internal fun RichTextScope.renderChildren(
   richTextRenderOptions: RichTextRenderOptions,
   richTextDecorations: RichTextDecorations,
   markdownAnimationState: MarkdownAnimationState,
-  textBlockModifier: Modifier,
+  textBlockWidth: TextBlockWidth,
   astNodeComposer: AstBlockNodeComposer?
 ) {
   node?.childrenSequence()?.forEach {
@@ -405,7 +412,7 @@ internal fun RichTextScope.renderChildren(
       richTextRenderOptions = richTextRenderOptions,
       richTextDecorations = richTextDecorations,
       markdownAnimationState = markdownAnimationState,
-      textBlockModifier = textBlockModifier,
+      textBlockWidth = textBlockWidth,
       astNodeComposer = astNodeComposer,
     )
   }
