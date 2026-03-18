@@ -70,6 +70,7 @@ public fun RichTextScope.Text(
   overflow: TextOverflow = TextOverflow.Clip,
   maxLines: Int = Int.MAX_VALUE,
   textDirection: TextDirection? = null,
+  fillWidthForExplicitParagraphAlignment: Boolean = false,
 ) {
   val style = currentRichTextStyle.stringStyle
   val contentColor = currentContentColor
@@ -153,7 +154,12 @@ public fun RichTextScope.Text(
       textDirection = textDirection,
     )
   }
-  val textModifier = if (hasExplicitParagraphAlignment(paragraphStyledText)) {
+  val textModifier = if (
+    shouldFillWidthForExplicitParagraphAlignment(
+      text = paragraphStyledText,
+      fillWidthForExplicitParagraphAlignment = fillWidthForExplicitParagraphAlignment,
+    )
+  ) {
     modifier.fillMaxWidth()
   } else {
     modifier
@@ -236,7 +242,10 @@ internal fun applyParagraphDirection(
   }
 }
 
-internal fun hasExplicitParagraphAlignment(text: AnnotatedString): Boolean =
+internal fun shouldFillWidthForExplicitParagraphAlignment(
+  text: AnnotatedString,
+  fillWidthForExplicitParagraphAlignment: Boolean,
+): Boolean = fillWidthForExplicitParagraphAlignment &&
   text.paragraphStyles.any { it.item.textAlign != TextAlign.Unspecified }
 
 private data class UnderlineSpec(

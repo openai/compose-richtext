@@ -39,7 +39,7 @@ class TextTest {
   }
 
   @Test
-  fun `hasExplicitParagraphAlignment returns true for centered paragraphs`() {
+  fun `shouldFillWidthForExplicitParagraphAlignment returns false when opt in is disabled`() {
     val text = AnnotatedString(
       text = "Hello",
       paragraphStyles = listOf(
@@ -51,11 +51,16 @@ class TextTest {
       ),
     )
 
-    assertTrue(hasExplicitParagraphAlignment(text))
+    assertFalse(
+      shouldFillWidthForExplicitParagraphAlignment(
+        text = text,
+        fillWidthForExplicitParagraphAlignment = false,
+      )
+    )
   }
 
   @Test
-  fun `hasExplicitParagraphAlignment ignores direction-only paragraphs`() {
+  fun `shouldFillWidthForExplicitParagraphAlignment ignores direction only paragraphs`() {
     val text = AnnotatedString(
       text = "שלום",
       paragraphStyles = listOf(
@@ -67,6 +72,32 @@ class TextTest {
       ),
     )
 
-    assertFalse(hasExplicitParagraphAlignment(text))
+    assertFalse(
+      shouldFillWidthForExplicitParagraphAlignment(
+        text = text,
+        fillWidthForExplicitParagraphAlignment = true,
+      )
+    )
+  }
+
+  @Test
+  fun `shouldFillWidthForExplicitParagraphAlignment returns true for centered paragraphs when enabled`() {
+    val text = AnnotatedString(
+      text = "Hello",
+      paragraphStyles = listOf(
+        AnnotatedString.Range(
+          item = ParagraphStyle(textAlign = TextAlign.Center),
+          start = 0,
+          end = 5,
+        ),
+      ),
+    )
+
+    assertTrue(
+      shouldFillWidthForExplicitParagraphAlignment(
+        text = text,
+        fillWidthForExplicitParagraphAlignment = true,
+      )
+    )
   }
 }

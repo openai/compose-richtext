@@ -82,6 +82,7 @@ public fun RichTextScope.BasicMarkdown(
   inlineContentOverride: InlineContentOverride? = null,
   richTextRenderOptions: RichTextRenderOptions = RichTextRenderOptions.Default,
   richTextDecorations: RichTextDecorations = RichTextDecorations(),
+  fillWidthForExplicitParagraphAlignment: Boolean = false,
   astBlockNodeComposer: AstBlockNodeComposer? = null,
 ) {
   RecursiveRenderMarkdownAst(
@@ -91,6 +92,7 @@ public fun RichTextScope.BasicMarkdown(
     richTextRenderOptions = richTextRenderOptions,
     richTextDecorations = richTextDecorations,
     markdownAnimationState = remember { MarkdownAnimationState() },
+    fillWidthForExplicitParagraphAlignment = fillWidthForExplicitParagraphAlignment,
     astNodeComposer = astBlockNodeComposer,
   )
 }
@@ -158,6 +160,7 @@ internal fun RichTextScope.RecursiveRenderMarkdownAst(
   richTextRenderOptions: RichTextRenderOptions,
   richTextDecorations: RichTextDecorations,
   markdownAnimationState: MarkdownAnimationState,
+  fillWidthForExplicitParagraphAlignment: Boolean,
   astNodeComposer: AstBlockNodeComposer?
 ) {
   astNode ?: return
@@ -170,6 +173,7 @@ internal fun RichTextScope.RecursiveRenderMarkdownAst(
         richTextRenderOptions,
         richTextDecorations,
         markdownAnimationState,
+        fillWidthForExplicitParagraphAlignment,
         astNodeComposer,
       )
     } == true) {
@@ -196,49 +200,46 @@ internal fun RichTextScope.RecursiveRenderMarkdownAst(
           richTextRenderOptions = richTextRenderOptions,
           richTextDecorations = richTextDecorations,
           markdownAnimationState = markdownAnimationState,
+          fillWidthForExplicitParagraphAlignment = fillWidthForExplicitParagraphAlignment,
           astNodeComposer = astNodeComposer
         )
       }
     }
   } else {
-    with(DefaultAstNodeComposer) {
-      Compose(
-        astNode = astNode,
-        contentOverride,
-        inlineContentOverride = inlineContentOverride,
-        richTextRenderOptions = richTextRenderOptions,
-        richTextDecorations = richTextDecorations,
-        markdownAnimationState = markdownAnimationState,
-        visitChildren = {
-          renderChildren(
-            node = it,
-            contentOverride,
-            inlineContentOverride = inlineContentOverride,
-            richTextRenderOptions = richTextRenderOptions,
-            richTextDecorations = richTextDecorations,
-            markdownAnimationState = markdownAnimationState,
-            astNodeComposer = astNodeComposer
-          )
-        }
-      )
-    }
+    ComposeDefaultAstNode(
+      astNode = astNode,
+      inlineContentOverride = inlineContentOverride,
+      richTextRenderOptions = richTextRenderOptions,
+      richTextDecorations = richTextDecorations,
+      markdownAnimationState = markdownAnimationState,
+      fillWidthForExplicitParagraphAlignment = fillWidthForExplicitParagraphAlignment,
+      visitChildren = {
+        renderChildren(
+          node = it,
+          contentOverride,
+          inlineContentOverride = inlineContentOverride,
+          richTextRenderOptions = richTextRenderOptions,
+          richTextDecorations = richTextDecorations,
+          markdownAnimationState = markdownAnimationState,
+          fillWidthForExplicitParagraphAlignment = fillWidthForExplicitParagraphAlignment,
+          astNodeComposer = astNodeComposer
+        )
+      }
+    )
   }
 }
 
-private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
-  override fun predicate(astBlockNodeType: AstBlockNodeType): Boolean = true
-
-  @Composable
-  override fun RichTextScope.Compose(
-    astNode: AstNode,
-    contentOverride: ContentOverride?,
-    inlineContentOverride: InlineContentOverride?,
-    richTextRenderOptions: RichTextRenderOptions,
-    richTextDecorations: RichTextDecorations,
-    markdownAnimationState: MarkdownAnimationState,
-    visitChildren: @Composable (AstNode) -> Unit
-  ) {
-    when (val astNodeType = astNode.type) {
+@Composable
+private fun RichTextScope.ComposeDefaultAstNode(
+  astNode: AstNode,
+  inlineContentOverride: InlineContentOverride?,
+  richTextRenderOptions: RichTextRenderOptions,
+  richTextDecorations: RichTextDecorations,
+  markdownAnimationState: MarkdownAnimationState,
+  fillWidthForExplicitParagraphAlignment: Boolean,
+  visitChildren: @Composable (AstNode) -> Unit,
+) {
+  when (val astNodeType = astNode.type) {
       is AstDocument -> visitChildren(astNode)
       is AstBlockQuote -> {
         BlockQuote(
@@ -297,6 +298,7 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
             richTextRenderOptions,
             richTextDecorations,
             markdownAnimationState,
+            fillWidthForExplicitParagraphAlignment,
             modifier = Modifier.semantics { heading() },
           )
         }
@@ -338,6 +340,7 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
           richTextRenderOptions,
           richTextDecorations,
           markdownAnimationState,
+          fillWidthForExplicitParagraphAlignment,
         )
       }
 
@@ -348,6 +351,7 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
           richTextRenderOptions,
           richTextDecorations,
           markdownAnimationState,
+          fillWidthForExplicitParagraphAlignment,
         )
       }
       // This should almost never happen. All the possible text
@@ -375,8 +379,7 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
       is AstTableCell -> {
         println("MarkdownRichText: Unexpected Table node while traversing the Abstract Syntax Tree.")
       }
-    }.let {}
-  }
+  }.let {}
 }
 
 /**
@@ -392,6 +395,7 @@ internal fun RichTextScope.renderChildren(
   richTextRenderOptions: RichTextRenderOptions,
   richTextDecorations: RichTextDecorations,
   markdownAnimationState: MarkdownAnimationState,
+  fillWidthForExplicitParagraphAlignment: Boolean,
   astNodeComposer: AstBlockNodeComposer?
 ) {
   node?.childrenSequence()?.forEach {
@@ -402,6 +406,7 @@ internal fun RichTextScope.renderChildren(
       richTextRenderOptions = richTextRenderOptions,
       richTextDecorations = richTextDecorations,
       markdownAnimationState = markdownAnimationState,
+      fillWidthForExplicitParagraphAlignment = fillWidthForExplicitParagraphAlignment,
       astNodeComposer = astNodeComposer,
     )
   }

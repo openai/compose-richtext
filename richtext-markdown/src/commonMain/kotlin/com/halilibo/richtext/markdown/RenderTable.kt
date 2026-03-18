@@ -19,6 +19,7 @@ internal fun RichTextScope.RenderTable(
   richtextRenderOptions: RichTextRenderOptions,
   richTextDecorations: RichTextDecorations,
   markdownAnimationState: MarkdownAnimationState,
+  fillWidthForExplicitParagraphAlignment: Boolean,
 ) {
   Table(
     markdownAnimationState = markdownAnimationState,
@@ -37,6 +38,7 @@ internal fun RichTextScope.RenderTable(
               richtextRenderOptions,
               richTextDecorations,
               markdownAnimationState,
+              fillWidthForExplicitParagraphAlignment,
             )
           }
         }
@@ -56,6 +58,7 @@ internal fun RichTextScope.RenderTable(
                   richtextRenderOptions,
                   richTextDecorations,
                   markdownAnimationState,
+                  fillWidthForExplicitParagraphAlignment,
                 )
               }
             }
