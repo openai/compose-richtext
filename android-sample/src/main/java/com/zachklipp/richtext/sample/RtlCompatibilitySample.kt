@@ -207,6 +207,20 @@ private val markdownCases = listOf(
     """.trimIndent(),
   ),
   MarkdownCase(
+    title = "Inline styling and code blocks",
+    markdown = """
+      This sentence includes `fixed width` text in the middle.
+
+      This sentence makes one word **bold** for emphasis.
+
+      ```kotlin
+      val english = "Hello"
+      val hebrew = "שלום"
+      println(english + " / " + hebrew)
+      ```
+    """.trimIndent(),
+  ),
+  MarkdownCase(
     title = "HTML alignment blocks",
     markdown = """
       <p align="left">Left aligned English block.</p>
