@@ -10,7 +10,6 @@ import com.halilibo.richtext.markdown.AstBlockNodeComposer
 import com.halilibo.richtext.markdown.BasicMarkdown
 import com.halilibo.richtext.markdown.ContentOverride
 import com.halilibo.richtext.markdown.InlineContentOverride
-import com.halilibo.richtext.markdown.TextBlockWidth
 import com.halilibo.richtext.markdown.node.AstNode
 import com.halilibo.richtext.ui.RichTextScope
 import com.halilibo.richtext.ui.string.RichTextDecorations
@@ -31,7 +30,7 @@ public fun RichTextScope.Markdown(
   markdownParseOptions: CommonMarkdownParseOptions = CommonMarkdownParseOptions.Default,
   richtextRenderOptions: RichTextRenderOptions = RichTextRenderOptions.Default,
   richTextDecorations: RichTextDecorations = RichTextDecorations(),
-  textBlockWidth: TextBlockWidth = TextBlockWidth.WrapContent,
+  enableRtlCompatibility: Boolean = false,
   contentOverride: ContentOverride? = null,
   inlineContentOverride: InlineContentOverride? = null,
   astBlockNodeComposer: AstBlockNodeComposer? = null
@@ -55,7 +54,7 @@ public fun RichTextScope.Markdown(
       inlineContentOverride = inlineContentOverride,
       richTextRenderOptions = richtextRenderOptions,
       richTextDecorations = richTextDecorations,
-      textBlockWidth = textBlockWidth,
+      enableRtlCompatibility = enableRtlCompatibility,
       astBlockNodeComposer = astBlockNodeComposer,
     )
   }
@@ -72,7 +71,7 @@ public fun RichTextScope.Markdown(
   content: Node,
   richtextRenderOptions: RichTextRenderOptions = RichTextRenderOptions.Default,
   richTextDecorations: RichTextDecorations = RichTextDecorations(),
-  textBlockWidth: TextBlockWidth = TextBlockWidth.WrapContent,
+  enableRtlCompatibility: Boolean = false,
   contentOverride: ContentOverride? = null,
   inlineContentOverride: InlineContentOverride? = null,
   astBlockNodeComposer: AstBlockNodeComposer? = null
@@ -84,7 +83,7 @@ public fun RichTextScope.Markdown(
     inlineContentOverride,
     richtextRenderOptions,
     richTextDecorations,
-    textBlockWidth,
+    enableRtlCompatibility,
     astBlockNodeComposer,
   )
 }

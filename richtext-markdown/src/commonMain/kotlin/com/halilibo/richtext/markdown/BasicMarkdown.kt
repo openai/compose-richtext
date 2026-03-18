@@ -1,12 +1,12 @@
 package com.halilibo.richtext.markdown
 
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextDirection
 import com.halilibo.richtext.markdown.node.AstBlockNodeType
 import com.halilibo.richtext.markdown.node.AstBlockQuote
 import com.halilibo.richtext.markdown.node.AstDocument
@@ -36,15 +36,12 @@ import com.halilibo.richtext.ui.HorizontalRule
 import com.halilibo.richtext.ui.ListType.Ordered
 import com.halilibo.richtext.ui.ListType.Unordered
 import com.halilibo.richtext.ui.RichTextScope
-import com.halilibo.richtext.ui.string.InlineContent
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
 import com.halilibo.richtext.ui.string.RichTextDecorations
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
-import com.halilibo.richtext.ui.string.RichTextRenderOptions.Companion
 import com.halilibo.richtext.ui.string.RichTextString
 import com.halilibo.richtext.ui.string.Text
 import com.halilibo.richtext.ui.string.richTextString
-import org.commonmark.node.Node
 
 /**
  * Overrides block content such as code blocks.
@@ -83,9 +80,16 @@ public fun RichTextScope.BasicMarkdown(
   inlineContentOverride: InlineContentOverride? = null,
   richTextRenderOptions: RichTextRenderOptions = RichTextRenderOptions.Default,
   richTextDecorations: RichTextDecorations = RichTextDecorations(),
-  textBlockWidth: TextBlockWidth = TextBlockWidth.WrapContent,
+  enableRtlCompatibility: Boolean = false,
   astBlockNodeComposer: AstBlockNodeComposer? = null,
 ) {
+  val documentTextDirection = remember(astNode, inlineContentOverride, enableRtlCompatibility) {
+    if (enableRtlCompatibility) {
+      astNode.documentTextDirection(inlineContentOverride)
+    } else {
+      null
+    }
+  }
   RecursiveRenderMarkdownAst(
     astNode = astNode,
     contentOverride = contentOverride,
@@ -93,7 +97,8 @@ public fun RichTextScope.BasicMarkdown(
     richTextRenderOptions = richTextRenderOptions,
     richTextDecorations = richTextDecorations,
     markdownAnimationState = remember { MarkdownAnimationState() },
-    textBlockWidth = textBlockWidth,
+    enableRtlCompatibility = enableRtlCompatibility,
+    documentTextDirection = documentTextDirection,
     astNodeComposer = astBlockNodeComposer,
   )
 }
@@ -161,7 +166,8 @@ internal fun RichTextScope.RecursiveRenderMarkdownAst(
   richTextRenderOptions: RichTextRenderOptions,
   richTextDecorations: RichTextDecorations,
   markdownAnimationState: MarkdownAnimationState,
-  textBlockWidth: TextBlockWidth,
+  enableRtlCompatibility: Boolean,
+  documentTextDirection: TextDirection?,
   astNodeComposer: AstBlockNodeComposer?
 ) {
   astNode ?: return
@@ -174,7 +180,8 @@ internal fun RichTextScope.RecursiveRenderMarkdownAst(
         richTextRenderOptions,
         richTextDecorations,
         markdownAnimationState,
-        textBlockWidth,
+        enableRtlCompatibility,
+        documentTextDirection,
         astNodeComposer,
       )
     } == true) {
@@ -201,7 +208,8 @@ internal fun RichTextScope.RecursiveRenderMarkdownAst(
           richTextRenderOptions = richTextRenderOptions,
           richTextDecorations = richTextDecorations,
           markdownAnimationState = markdownAnimationState,
-          textBlockWidth = textBlockWidth,
+          enableRtlCompatibility = enableRtlCompatibility,
+          documentTextDirection = documentTextDirection,
           astNodeComposer = astNodeComposer
         )
       }
@@ -213,7 +221,8 @@ internal fun RichTextScope.RecursiveRenderMarkdownAst(
       richTextRenderOptions = richTextRenderOptions,
       richTextDecorations = richTextDecorations,
       markdownAnimationState = markdownAnimationState,
-      textBlockWidth = textBlockWidth,
+      enableRtlCompatibility = enableRtlCompatibility,
+      documentTextDirection = documentTextDirection,
       visitChildren = {
         renderChildren(
           node = it,
@@ -222,7 +231,8 @@ internal fun RichTextScope.RecursiveRenderMarkdownAst(
           richTextRenderOptions = richTextRenderOptions,
           richTextDecorations = richTextDecorations,
           markdownAnimationState = markdownAnimationState,
-          textBlockWidth = textBlockWidth,
+          enableRtlCompatibility = enableRtlCompatibility,
+          documentTextDirection = documentTextDirection,
           astNodeComposer = astNodeComposer
         )
       }
@@ -237,15 +247,10 @@ private fun RichTextScope.ComposeDefaultAstNode(
   richTextRenderOptions: RichTextRenderOptions,
   richTextDecorations: RichTextDecorations,
   markdownAnimationState: MarkdownAnimationState,
-  textBlockWidth: TextBlockWidth,
+  enableRtlCompatibility: Boolean,
+  documentTextDirection: TextDirection?,
   visitChildren: @Composable (AstNode) -> Unit,
 ) {
-  val textBlockModifier = if (textBlockWidth == TextBlockWidth.FillMaxWidth) {
-    Modifier.fillMaxWidth()
-  } else {
-    Modifier
-  }
-
   when (val astNodeType = astNode.type) {
       is AstDocument -> visitChildren(astNode)
       is AstBlockQuote -> {
@@ -305,8 +310,9 @@ private fun RichTextScope.ComposeDefaultAstNode(
             richTextRenderOptions,
             richTextDecorations,
             markdownAnimationState,
-            modifier = textBlockModifier
-              .semantics { heading() },
+            enableRtlCompatibility = enableRtlCompatibility,
+            documentTextDirection = documentTextDirection,
+            modifier = Modifier.semantics { heading() },
           )
         }
       }
@@ -328,11 +334,32 @@ private fun RichTextScope.ComposeDefaultAstNode(
       }
 
       is AstHtmlBlock -> {
-        Text(text = richTextString {
-          appendInlineContent(content = InlineContent {
-            HtmlBlock(astNodeType.literal)
-          })
-        })
+        val htmlTextDirection = htmlBlockTextDirection(astNodeType.literal)
+        val htmlBlockPlacement = when (htmlBlockAlignment(astNodeType.literal)) {
+          MarkdownBlockAlignment.Center -> MarkdownBlockPlacement.Center
+          MarkdownBlockAlignment.End -> MarkdownBlockPlacement.End
+          null -> if (enableRtlCompatibility &&
+            effectiveTextDirection(htmlTextDirection, documentTextDirection) != null
+          ) {
+            MarkdownBlockPlacement.StartInTextDirection
+          } else {
+            null
+          }
+        }
+        val textDirection = if (enableRtlCompatibility) {
+          effectiveTextDirection(htmlTextDirection, documentTextDirection)
+        } else {
+          htmlTextDirection
+        }
+        MarkdownBlock(
+          placement = htmlBlockPlacement,
+          textDirection = textDirection,
+        ) {
+          HtmlBlock(
+            content = astNodeType.literal,
+            textDirection = textDirection,
+          )
+        }
       }
 
       is AstLinkReferenceDefinition -> {
@@ -347,7 +374,8 @@ private fun RichTextScope.ComposeDefaultAstNode(
           richTextRenderOptions,
           richTextDecorations,
           markdownAnimationState,
-          modifier = textBlockModifier,
+          enableRtlCompatibility = enableRtlCompatibility,
+          documentTextDirection = documentTextDirection,
         )
       }
 
@@ -401,7 +429,8 @@ internal fun RichTextScope.renderChildren(
   richTextRenderOptions: RichTextRenderOptions,
   richTextDecorations: RichTextDecorations,
   markdownAnimationState: MarkdownAnimationState,
-  textBlockWidth: TextBlockWidth,
+  enableRtlCompatibility: Boolean,
+  documentTextDirection: TextDirection?,
   astNodeComposer: AstBlockNodeComposer?
 ) {
   node?.childrenSequence()?.forEach {
@@ -412,7 +441,8 @@ internal fun RichTextScope.renderChildren(
       richTextRenderOptions = richTextRenderOptions,
       richTextDecorations = richTextDecorations,
       markdownAnimationState = markdownAnimationState,
-      textBlockWidth = textBlockWidth,
+      enableRtlCompatibility = enableRtlCompatibility,
+      documentTextDirection = documentTextDirection,
       astNodeComposer = astNodeComposer,
     )
   }

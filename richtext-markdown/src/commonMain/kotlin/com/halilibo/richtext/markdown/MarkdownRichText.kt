@@ -1,12 +1,17 @@
 package com.halilibo.richtext.markdown
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.halilibo.richtext.markdown.node.AstBlockQuote
@@ -15,6 +20,7 @@ import com.halilibo.richtext.markdown.node.AstEmphasis
 import com.halilibo.richtext.markdown.node.AstFencedCodeBlock
 import com.halilibo.richtext.markdown.node.AstHardLineBreak
 import com.halilibo.richtext.markdown.node.AstHeading
+import com.halilibo.richtext.markdown.node.AstHtmlBlock
 import com.halilibo.richtext.markdown.node.AstImage
 import com.halilibo.richtext.markdown.node.AstIndentedCodeBlock
 import com.halilibo.richtext.markdown.node.AstLink
@@ -67,6 +73,8 @@ internal fun RichTextScope.MarkdownRichText(
   richTextRenderOptions: RichTextRenderOptions,
   richTextDecorations: RichTextDecorations,
   markdownAnimationState: MarkdownAnimationState,
+  enableRtlCompatibility: Boolean = false,
+  documentTextDirection: TextDirection? = null,
   modifier: Modifier = Modifier,
 ) {
   // Assume that only RichText nodes reside below this level.
@@ -77,16 +85,30 @@ internal fun RichTextScope.MarkdownRichText(
     astNode.type is AstParagraph || astNode.type is AstHeading -> firstStrongLetterLayoutDirection(richText.text)
     else -> null
   }
+  val textDirection = if (enableRtlCompatibility) {
+    effectiveTextDirection(blockTextDirection, documentTextDirection)
+  } else {
+    blockTextDirection
+  }
 
-  Text(
-    text = richText,
-    modifier = modifier,
-    isLeafText = astNode.isLastInTree(),
-    renderOptions = richTextRenderOptions,
-    sharedAnimationState = markdownAnimationState,
-    decorations = richTextDecorations,
-    textDirection = blockTextDirection,
-  )
+  MarkdownBlock(
+    placement = if (enableRtlCompatibility && textDirection != null) {
+      MarkdownBlockPlacement.StartInTextDirection
+    } else {
+      null
+    },
+    textDirection = textDirection,
+  ) {
+    Text(
+      text = richText,
+      modifier = modifier,
+      isLeafText = astNode.isLastInTree(),
+      renderOptions = richTextRenderOptions,
+      sharedAnimationState = markdownAnimationState,
+      decorations = richTextDecorations,
+      textDirection = textDirection,
+    )
+  }
 }
 
 internal fun firstStrongLetterLayoutDirection(text: String): TextDirection? {
@@ -109,6 +131,108 @@ internal fun firstStrongLetterLayoutDirection(text: String): TextDirection? {
 
   return null
 }
+
+internal enum class MarkdownBlockAlignment {
+  Center,
+  End,
+}
+
+internal enum class MarkdownBlockPlacement {
+  Center,
+  End,
+  StartInTextDirection,
+}
+
+@Composable
+internal fun MarkdownBlock(
+  placement: MarkdownBlockPlacement?,
+  textDirection: TextDirection?,
+  content: @Composable () -> Unit,
+) {
+  if (placement == null) {
+    content()
+    return
+  }
+
+  val contentAlignment = when (placement) {
+    MarkdownBlockPlacement.Center -> Alignment.TopCenter
+    MarkdownBlockPlacement.End -> Alignment.TopEnd
+    MarkdownBlockPlacement.StartInTextDirection -> Alignment.TopStart
+  }
+  val layoutDirection = when (placement) {
+    MarkdownBlockPlacement.Center -> null
+    MarkdownBlockPlacement.End -> LayoutDirection.Ltr
+    MarkdownBlockPlacement.StartInTextDirection -> when (textDirection) {
+      TextDirection.Rtl -> LayoutDirection.Rtl
+      TextDirection.Ltr -> LayoutDirection.Ltr
+      else -> null
+    }
+  }
+  val block: @Composable () -> Unit = {
+    Box(
+      modifier = Modifier.fillMaxWidth(),
+      contentAlignment = contentAlignment,
+    ) {
+      content()
+    }
+  }
+
+  if (layoutDirection == null) {
+    block()
+  } else {
+    CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
+      block()
+    }
+  }
+}
+
+internal fun AstNode.documentTextDirection(
+  inlineContentOverride: InlineContentOverride?,
+): TextDirection? {
+  return when (val astNodeType = type) {
+    is AstHeading,
+    AstParagraph,
+    -> firstStrongLetterLayoutDirection(
+      with(RichTextScope) {
+        computeRichTextString(this@documentTextDirection, inlineContentOverride).text
+      },
+    )
+
+    is AstHtmlBlock -> htmlBlockTextDirection(astNodeType.literal)
+    else -> childrenSequence().firstNotNullOfOrNull { child ->
+      child.documentTextDirection(inlineContentOverride)
+    }
+  }
+}
+
+internal fun htmlBlockTextDirection(content: String): TextDirection? {
+  return firstStrongLetterLayoutDirection(stripHtmlTags(content))
+}
+
+internal fun htmlBlockAlignment(content: String): MarkdownBlockAlignment? {
+  return when {
+    HtmlCenterTag.containsMatchIn(content) || HtmlCenterAlign.containsMatchIn(content) ->
+      MarkdownBlockAlignment.Center
+
+    HtmlRightAlign.containsMatchIn(content) -> MarkdownBlockAlignment.End
+    else -> null
+  }
+}
+
+internal fun effectiveTextDirection(
+  blockTextDirection: TextDirection?,
+  documentTextDirection: TextDirection?,
+): TextDirection? {
+  return blockTextDirection ?: documentTextDirection
+}
+
+private fun stripHtmlTags(content: String): String = HtmlTag.replace(content, "")
+
+private val HtmlTag = Regex("<[^>]+>")
+private val HtmlCenterTag = Regex("(?is)<\\s*center\\b")
+private val HtmlCenterAlign = Regex("(?is)\\balign\\s*=\\s*['\"]?center['\"]?")
+private val HtmlRightAlign = Regex("(?is)\\balign\\s*=\\s*['\"]?right['\"]?")
+
 private fun AstNode?.isLastInTree(): Boolean = this?.links?.parent == null ||
     (links.next == null && links.parent.isLastInTree())
 
