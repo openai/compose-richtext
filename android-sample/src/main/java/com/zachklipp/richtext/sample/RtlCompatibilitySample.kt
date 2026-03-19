@@ -19,8 +19,8 @@ import androidx.compose.ui.unit.dp
 import com.halilibo.richtext.commonmark.Markdown
 import com.halilibo.richtext.ui.material3.RichText
 
-@Preview(name = "English Heading · en-US", locale = "en-rUS", widthDp = 412, heightDp = 915, showBackground = true)
-@Preview(name = "English Heading · he-IL", locale = "he-rIL", widthDp = 412, heightDp = 915, showBackground = true)
+@Preview(name = "English Heading · en-US", locale = "en-rUS", widthDp = 412, showBackground = true)
+@Preview(name = "English Heading · he-IL", locale = "he-rIL", widthDp = 412, showBackground = true)
 @Composable
 private fun EnglishHeadingPreview() {
   PreviewCaseSurface {
@@ -28,8 +28,8 @@ private fun EnglishHeadingPreview() {
   }
 }
 
-@Preview(name = "כותרת בעברית · en-US", locale = "en-rUS", widthDp = 412, heightDp = 915, showBackground = true)
-@Preview(name = "כותרת בעברית · he-IL", locale = "he-rIL", widthDp = 412, heightDp = 915, showBackground = true)
+@Preview(name = "כותרת בעברית · en-US", locale = "en-rUS", widthDp = 412, showBackground = true)
+@Preview(name = "כותרת בעברית · he-IL", locale = "he-rIL", widthDp = 412, showBackground = true)
 @Composable
 private fun HebrewHeadingPreview() {
   PreviewCaseSurface {
@@ -37,8 +37,8 @@ private fun HebrewHeadingPreview() {
   }
 }
 
-@Preview(name = "Inline styling and code blocks · en-US", locale = "en-rUS", widthDp = 412, heightDp = 915, showBackground = true)
-@Preview(name = "Inline styling and code blocks · he-IL", locale = "he-rIL", widthDp = 412, heightDp = 915, showBackground = true)
+@Preview(name = "Inline styling and code blocks · en-US", locale = "en-rUS", widthDp = 412, showBackground = true)
+@Preview(name = "Inline styling and code blocks · he-IL", locale = "he-rIL", widthDp = 412, showBackground = true)
 @Composable
 private fun InlineStylingAndCodeBlocksPreview() {
   PreviewCaseSurface {

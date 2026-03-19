@@ -34,6 +34,7 @@ import com.halilibo.richtext.ui.RichTextStyle
 import com.halilibo.richtext.ui.Table
 import com.halilibo.richtext.ui.WithStyle
 import com.halilibo.richtext.ui.material3.RichText
+import com.halilibo.richtext.ui.resolveDefaults
 import com.halilibo.richtext.ui.string.LinkDecoration
 import com.halilibo.richtext.ui.string.RichTextDecorations
 import com.halilibo.richtext.ui.string.RichTextString
@@ -62,9 +63,10 @@ import com.halilibo.richtext.ui.string.withFormat
   style: RichTextStyle? = null,
   header: String = ""
 ) {
+  val currentStyle = style?.resolveDefaults() ?: RichTextStyle().resolveDefaults()
   RichText(
     modifier = Modifier.padding(8.dp),
-    style = style
+    style = currentStyle
   ) {
     Heading(0, "Paragraphs $header")
     Text("Simple paragraph.")
@@ -166,7 +168,6 @@ import com.halilibo.richtext.ui.string.withFormat
       }
     }
 
-    val currentStyle = style!!
     WithStyle(
       currentStyle.copy(
         tableStyle = currentStyle.tableStyle!!.copy(
