@@ -44,7 +44,7 @@ import androidx.compose.ui.unit.dp
 private val Samples = listOf<Pair<String, @Composable () -> Unit>>(
   "RichText Demo" to @Composable { RichTextSample() },
   "Markdown Demo" to @Composable { MarkdownSample() },
-  "RTL Compatability Demo" to @Composable { RtlCompatibilitySample() },
+  "RTL Compatibility Demo" to @Composable { RtlCompatibilitySample() },
   "Lazy Markdown Demo" to @Composable { LazyMarkdownSample() },
   "Text Animation" to @Composable { AnimatedRichTextSample() },
   "Chinese Text Animation" to @Composable { ChineseAnimatedRichTextSample() },
