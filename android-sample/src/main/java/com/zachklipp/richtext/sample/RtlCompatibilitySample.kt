@@ -1,15 +1,11 @@
 package com.zachklipp.richtext.sample
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -24,19 +20,9 @@ import androidx.compose.ui.unit.dp
 import com.halilibo.richtext.commonmark.Markdown
 import com.halilibo.richtext.ui.material3.RichText
 
-@Preview(name = "RTL Compatibility Demo Narrow", widthDp = 420, heightDp = 1600, showBackground = true)
+@Preview(name = "RTL Compatibility Demo", widthDp = 412, heightDp = 2200, showBackground = true)
 @Composable
-private fun RtlCompatibilityNarrowPreview() {
-  SampleTheme {
-    Surface {
-      RtlCompatibilitySample()
-    }
-  }
-}
-
-@Preview(name = "RTL Compatibility Demo Wide", widthDp = 960, heightDp = 1200, showBackground = true)
-@Composable
-private fun RtlCompatibilityWidePreview() {
+private fun RtlCompatibilityPreview() {
   SampleTheme {
     Surface {
       RtlCompatibilitySample()
@@ -46,109 +32,68 @@ private fun RtlCompatibilityWidePreview() {
 
 @Composable
 fun RtlCompatibilitySample() {
-  BoxWithConstraints(
+  Column(
     modifier = Modifier
       .fillMaxWidth()
       .verticalScroll(rememberScrollState())
       .padding(16.dp),
+    verticalArrangement = Arrangement.spacedBy(24.dp),
   ) {
-    val isWideLayout = maxWidth >= 720.dp
+    Text(
+      text = "Compare the same markdown under LTR and RTL layout directions.",
+      style = MaterialTheme.typography.bodyLarge,
+    )
 
+    layoutDirectionPanels.forEach { panel ->
+      LayoutDirectionSection(
+        title = panel.title,
+        layoutDirection = panel.layoutDirection,
+      )
+    }
+  }
+}
+
+@Composable
+private fun LayoutDirectionSection(
+  title: String,
+  layoutDirection: LayoutDirection,
+) {
+  CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
     Column(
       modifier = Modifier.fillMaxWidth(),
       verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
       Text(
-        text = "Compare the same markdown under LTR and RTL layout directions.",
-        style = MaterialTheme.typography.bodyLarge,
+        text = title,
+        style = MaterialTheme.typography.headlineSmall,
+        fontWeight = FontWeight.Bold,
       )
-
-      if (isWideLayout) {
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-          layoutDirectionPanels.forEach { panel ->
-            LayoutDirectionPanel(
-              title = panel.title,
-              layoutDirection = panel.layoutDirection,
-              modifier = Modifier.weight(1f),
-            )
-          }
-        }
-      } else {
-        Column(
-          modifier = Modifier.fillMaxWidth(),
-          verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-          layoutDirectionPanels.forEach { panel ->
-            LayoutDirectionPanel(
-              title = panel.title,
-              layoutDirection = panel.layoutDirection,
-            )
-          }
-        }
-      }
-    }
-  }
-}
-
-@Composable
-private fun LayoutDirectionPanel(
-  title: String,
-  layoutDirection: LayoutDirection,
-  modifier: Modifier = Modifier,
-) {
-  CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
-    Card(
-      modifier = modifier.fillMaxWidth(),
-      elevation = CardDefaults.elevatedCardElevation(),
-    ) {
-      Column(
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-      ) {
-        Text(
-          text = title,
-          style = MaterialTheme.typography.headlineSmall,
-          fontWeight = FontWeight.Bold,
+      markdownCases.forEach { previewCase ->
+        MarkdownCaseSection(
+          title = previewCase.title,
+          markdown = previewCase.markdown,
         )
-        markdownCases.forEach { previewCase ->
-          MarkdownCaseCard(
-            title = previewCase.title,
-            markdown = previewCase.markdown,
-          )
-        }
       }
     }
   }
 }
 
 @Composable
-private fun MarkdownCaseCard(
+private fun MarkdownCaseSection(
   title: String,
   markdown: String,
 ) {
-  Card(
+  Column(
     modifier = Modifier.fillMaxWidth(),
-    elevation = CardDefaults.elevatedCardElevation(),
+    verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
-    Column(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(16.dp),
-      verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-      Text(
-        text = title,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
-      )
-      RichText(modifier = Modifier.fillMaxWidth()) {
-        Markdown(content = markdown)
-      }
+    Text(
+      text = title,
+      style = MaterialTheme.typography.titleMedium,
+      fontWeight = FontWeight.SemiBold,
+    )
+    RichText(modifier = Modifier.fillMaxWidth()) {
+      Markdown(content = markdown)
     }
   }
 }
@@ -165,11 +110,11 @@ private data class MarkdownCase(
 
 private val layoutDirectionPanels = listOf(
   LayoutDirectionPanelModel(
-    title = "LTR UI",
+    title = "LayoutDirection.Ltr",
     layoutDirection = LayoutDirection.Ltr,
   ),
   LayoutDirectionPanelModel(
-    title = "RTL UI",
+    title = "LayoutDirection.Rtl",
     layoutDirection = LayoutDirection.Rtl,
   ),
 )
