@@ -13,19 +13,46 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.halilibo.richtext.commonmark.Markdown
 import com.halilibo.richtext.ui.material3.RichText
 
-@Preview(name = "RTL Compatibility Demo", widthDp = 412, heightDp = 2200, showBackground = true)
+@Preview(name = "English Heading · en-US", locale = "en-rUS", widthDp = 412, heightDp = 915, showBackground = true)
+@Preview(name = "English Heading · he-IL", locale = "he-rIL", widthDp = 412, heightDp = 915, showBackground = true)
 @Composable
-private fun RtlCompatibilityPreview() {
+private fun EnglishHeadingPreview() {
+  PreviewCaseSurface {
+    MarkdownCaseContent(markdown = englishHeadingMarkdown)
+  }
+}
+
+@Preview(name = "כותרת בעברית · en-US", locale = "en-rUS", widthDp = 412, heightDp = 915, showBackground = true)
+@Preview(name = "כותרת בעברית · he-IL", locale = "he-rIL", widthDp = 412, heightDp = 915, showBackground = true)
+@Composable
+private fun HebrewHeadingPreview() {
+  PreviewCaseSurface {
+    MarkdownCaseContent(markdown = hebrewHeadingMarkdown)
+  }
+}
+
+@Preview(name = "Inline styling and code blocks · en-US", locale = "en-rUS", widthDp = 412, heightDp = 915, showBackground = true)
+@Preview(name = "Inline styling and code blocks · he-IL", locale = "he-rIL", widthDp = 412, heightDp = 915, showBackground = true)
+@Composable
+private fun InlineStylingAndCodeBlocksPreview() {
+  PreviewCaseSurface {
+    MarkdownCaseContent(markdown = inlineStylingAndCodeBlocksMarkdown)
+  }
+}
+
+@Composable
+private fun PreviewCaseSurface(
+  content: @Composable () -> Unit,
+) {
   SampleTheme {
     Surface {
-      RtlCompatibilitySample()
+      content()
     }
   }
 }
@@ -37,41 +64,13 @@ fun RtlCompatibilitySample() {
       .fillMaxWidth()
       .verticalScroll(rememberScrollState())
       .padding(16.dp),
-    verticalArrangement = Arrangement.spacedBy(24.dp),
+    verticalArrangement = Arrangement.spacedBy(28.dp),
   ) {
-    Text(
-      text = "Compare the same markdown under LTR and RTL layout directions.",
-      style = MaterialTheme.typography.bodyLarge,
-    )
-
-    layoutDirectionPanels.forEach { panel ->
-      LayoutDirectionSection(
-        title = panel.title,
-        layoutDirection = panel.layoutDirection,
-      )
-    }
-  }
-}
-
-@Composable
-private fun LayoutDirectionSection(
-  title: String,
-  layoutDirection: LayoutDirection,
-) {
-  CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
-    Column(
-      modifier = Modifier.fillMaxWidth(),
-      verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-      Text(
-        text = title,
-        style = MaterialTheme.typography.headlineSmall,
-        fontWeight = FontWeight.Bold,
-      )
-      markdownCases.forEach { previewCase ->
-        MarkdownCaseSection(
-          title = previewCase.title,
-          markdown = previewCase.markdown,
+    markdownCases.forEach { markdown ->
+      previewVariants.forEach { previewVariant ->
+        LocalizedMarkdownCaseSection(
+          markdown = markdown,
+          previewVariant = previewVariant,
         )
       }
     }
@@ -79,97 +78,89 @@ private fun LayoutDirectionSection(
 }
 
 @Composable
-private fun MarkdownCaseSection(
-  title: String,
+private fun LocalizedMarkdownCaseSection(
   markdown: String,
+  previewVariant: PreviewVariant,
+) {
+  CompositionLocalProvider(LocalLayoutDirection provides previewVariant.layoutDirection) {
+    MarkdownCaseContent(
+      localeLabel = previewVariant.localeLabel,
+      layoutDirection = previewVariant.layoutDirection,
+      markdown = markdown,
+    )
+  }
+}
+
+@Composable
+private fun MarkdownCaseContent(
+  markdown: String,
+  localeLabel: String? = null,
+  layoutDirection: LayoutDirection? = null,
 ) {
   Column(
     modifier = Modifier.fillMaxWidth(),
     verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
-    Text(
-      text = title,
-      style = MaterialTheme.typography.titleMedium,
-      fontWeight = FontWeight.SemiBold,
-    )
+    if (localeLabel != null) {
+      Text(
+        text = "locale = $localeLabel",
+        style = MaterialTheme.typography.labelLarge,
+      )
+    }
+    if (layoutDirection != null) {
+      Text(
+        text = "layoutDirection = LayoutDirection.${layoutDirection.name}",
+        style = MaterialTheme.typography.labelLarge,
+      )
+    }
     RichText(modifier = Modifier.fillMaxWidth()) {
       Markdown(content = markdown)
     }
   }
 }
 
-private data class LayoutDirectionPanelModel(
-  val title: String,
+private data class PreviewVariant(
+  val localeLabel: String,
   val layoutDirection: LayoutDirection,
 )
 
-private data class MarkdownCase(
-  val title: String,
-  val markdown: String,
+private val previewVariants = listOf(
+  PreviewVariant(localeLabel = "en-US", layoutDirection = LayoutDirection.Ltr),
+  PreviewVariant(localeLabel = "he-IL", layoutDirection = LayoutDirection.Rtl),
 )
 
-private val layoutDirectionPanels = listOf(
-  LayoutDirectionPanelModel(
-    title = "LayoutDirection.Ltr",
-    layoutDirection = LayoutDirection.Ltr,
-  ),
-  LayoutDirectionPanelModel(
-    title = "LayoutDirection.Rtl",
-    layoutDirection = LayoutDirection.Rtl,
-  ),
-)
+private val englishHeadingMarkdown = """
+  # English Heading
+
+  This paragraph starts in English, links to [example.com](https://example.com),
+  then mentions עברית before ending in English.
+
+  > English quote with a little עברית mixed in.
+""".trimIndent()
+
+private val hebrewHeadingMarkdown = """
+  # כותרת בעברית
+
+  הפסקה הזאת מתחילה בעברית, מוסיפה [קישור](https://example.com),
+  ואז משלבת English לפני הסיום.
+
+  > ציטוט בעברית עם English בפנים.
+""".trimIndent()
+
+private val inlineStylingAndCodeBlocksMarkdown = """
+  This sentence includes `fixed width` text in the middle.
+
+  This sentence makes one word **bold** for emphasis.
+
+  ```kotlin
+  val english = "Hello"
+  val hebrew = "שלום"
+  println(english + " / " + hebrew)
+  ```
+""".trimIndent()
 
 private val markdownCases = listOf(
-  MarkdownCase(
-    title = "English-first paragraph",
-    markdown = """
-      # English heading
-
-      This paragraph starts in English, links to [example.com](https://example.com),
-      then mentions עברית before ending in English.
-
-      > English quote with a little עברית mixed in.
-    """.trimIndent(),
-  ),
-  MarkdownCase(
-    title = "Hebrew-first paragraph",
-    markdown = """
-      # כותרת בעברית
-
-      הפסקה הזאת מתחילה בעברית, מוסיפה [קישור](https://example.com),
-      ואז משלבת English לפני הסיום.
-
-      > ציטוט בעברית עם English בפנים.
-    """.trimIndent(),
-  ),
-  MarkdownCase(
-    title = "Lists and nesting",
-    markdown = """
-      1. English item
-         - Nested עברית item
-      2. פריט בעברית
-         - Nested English item
-    """.trimIndent(),
-  ),
-  MarkdownCase(
-    title = "Inline styling and code blocks",
-    markdown = """
-      This sentence includes `fixed width` text in the middle.
-
-      This sentence makes one word **bold** for emphasis.
-
-      ```kotlin
-      val english = "Hello"
-      val hebrew = "שלום"
-      println(english + " / " + hebrew)
-      ```
-    """.trimIndent(),
-  ),
-  MarkdownCase(
-    title = "HTML alignment blocks",
-    markdown = """
-      <p align="left">Left aligned English block.</p>
-      <p align="right">בלוק מיושר לימין.</p>
-    """.trimIndent(),
-  ),
+  englishHeadingMarkdown,
+  hebrewHeadingMarkdown,
+  inlineStylingAndCodeBlocksMarkdown,
 )
