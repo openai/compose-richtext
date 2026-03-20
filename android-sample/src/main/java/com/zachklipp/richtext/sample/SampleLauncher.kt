@@ -54,7 +54,12 @@ private val Samples = listOf<Pair<String, @Composable () -> Unit>>(
 
 @Preview(showBackground = true)
 @Composable private fun SampleLauncherPreview() {
-  SamplesListScreen(isDarkTheme = true, onSampleClicked = {}, onThemeToggleClicked = {})
+  SamplesListScreen(
+    isDarkTheme = true,
+    onSampleClicked = {},
+    onThemeToggleClicked = {},
+    showSamplePreviews = false,
+  )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -97,6 +102,7 @@ private val Samples = listOf<Pair<String, @Composable () -> Unit>>(
   isDarkTheme: Boolean,
   onSampleClicked: (Int) -> Unit,
   onThemeToggleClicked: () -> Unit,
+  showSamplePreviews: Boolean = true,
 ) {
   Scaffold(
     topBar = {
@@ -113,7 +119,11 @@ private val Samples = listOf<Pair<String, @Composable () -> Unit>>(
         ListItem(
           headlineContent = { Text(title) },
           modifier = Modifier.clickable(onClick = { onSampleClicked(index) }),
-          leadingContent = { SamplePreview(sampleContent) }
+          leadingContent = if (showSamplePreviews) {
+            { SamplePreview(sampleContent) }
+          } else {
+            null
+          }
         )
       }
     }

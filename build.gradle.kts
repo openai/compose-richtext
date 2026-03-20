@@ -21,6 +21,7 @@ buildscript {
 
 plugins {
   id("org.jetbrains.dokka") version "2.0.0"
+  id("io.github.takahirom.roborazzi") version "1.59.0" apply false
 }
 
 repositories {
