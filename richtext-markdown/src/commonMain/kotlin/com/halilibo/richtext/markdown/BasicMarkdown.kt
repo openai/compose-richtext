@@ -246,17 +246,30 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
         BlockQuote(
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
+          gutterDirection = if (richTextRenderOptions.enableRtlCompatibility) {
+            astNode.firstStrongTextDirectionInFirstLine()
+          } else {
+            null
+          },
         ) {
           visitChildren(astNode)
         }
       }
 
       is AstUnorderedList -> {
+        val markerDirection = if (richTextRenderOptions.enableRtlCompatibility) {
+          astNode.filterChildrenType<AstListItem>()
+            .firstOrNull()
+            ?.firstStrongTextDirectionInSubtree()
+        } else {
+          null
+        }
         FormattedList(
           listType = Unordered,
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
-          items = astNode.filterChildrenType<AstListItem>().toList()
+          items = astNode.filterChildrenType<AstListItem>().toList(),
+          markerDirection = markerDirection,
         ) { astListItem ->
           // if this list item has no child, it should at least emit a single pixel layout.
           if (astListItem.links.firstChild == null) {
@@ -268,12 +281,20 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
       }
 
       is AstOrderedList -> {
+        val markerDirection = if (richTextRenderOptions.enableRtlCompatibility) {
+          astNode.childrenSequence()
+            .firstOrNull()
+            ?.firstStrongTextDirectionInSubtree()
+        } else {
+          null
+        }
         FormattedList(
           listType = Ordered,
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
           items = astNode.childrenSequence().toList(),
           startIndex = astNodeType.startNumber - 1,
+          markerDirection = markerDirection,
         ) { astListItem ->
           // if this list item has no child, it should at least emit a single pixel layout.
           if (astListItem.links.firstChild == null) {

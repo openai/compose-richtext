@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -26,6 +27,7 @@ import com.halilibo.richtext.ui.BlockQuoteGutter.BarGutter
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
 import com.halilibo.richtext.ui.string.applyRtlCompatibility
+import com.halilibo.richtext.ui.string.resolveRtlCompatibleLayoutDirection
 
 internal val DefaultBlockQuoteGutter = BarGutter()
 
@@ -77,6 +79,21 @@ public interface BlockQuoteGutter {
   markdownAnimationState: MarkdownAnimationState = remember { MarkdownAnimationState() },
   richTextRenderOptions: RichTextRenderOptions = RichTextRenderOptions(),
   children: @Composable RichTextScope.() -> Unit
+): Unit = BlockQuote(
+  markdownAnimationState = markdownAnimationState,
+  richTextRenderOptions = richTextRenderOptions,
+  gutterDirection = null,
+  children = children,
+)
+
+/**
+ * Draws a block quote, with a [BlockQuoteGutter] drawn beside the children on the start side.
+ */
+@Composable public fun RichTextScope.BlockQuote(
+  markdownAnimationState: MarkdownAnimationState = remember { MarkdownAnimationState() },
+  richTextRenderOptions: RichTextRenderOptions = RichTextRenderOptions(),
+  gutterDirection: TextDirection? = null,
+  children: @Composable RichTextScope.() -> Unit
 ) {
   val gutter = currentRichTextStyle.resolveDefaults().blockQuoteGutter!!
   val spacing = gutter.verticalContentPadding ?: with(LocalDensity.current) {
@@ -120,8 +137,17 @@ public interface BlockQuoteGutter {
 
     layout(layoutWidth, layoutHeight) {
       if (richTextRenderOptions.enableRtlCompatibility) {
-        gutterPlaceable.placeRelative(0, 0)
-        contentsPlaceable.placeRelative(gutterWidth, 0)
+        val resolvedLayoutDirection = resolveRtlCompatibleLayoutDirection(
+          contentDirection = gutterDirection,
+          systemDirection = layoutDirection,
+        )
+        if (resolvedLayoutDirection == androidx.compose.ui.unit.LayoutDirection.Rtl) {
+          contentsPlaceable.place(0, 0)
+          gutterPlaceable.place(layoutWidth - gutterWidth, 0)
+        } else {
+          gutterPlaceable.place(0, 0)
+          contentsPlaceable.place(gutterWidth, 0)
+        }
       } else {
         gutterPlaceable.place(IntOffset.Zero)
         contentsPlaceable.place(gutterWidth, 0)

@@ -5,6 +5,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.unit.LayoutDirection
 import kotlin.text.CharDirectionality
 
 public fun Modifier.applyRtlCompatibility(renderOptions: RichTextRenderOptions): Modifier =
@@ -55,4 +56,13 @@ internal fun applyRtlCompatibleTextDirection(
       else -> textStyle.textAlign
     },
   )
+}
+
+internal fun resolveRtlCompatibleLayoutDirection(
+  contentDirection: TextDirection?,
+  systemDirection: LayoutDirection,
+): LayoutDirection = when (contentDirection) {
+  TextDirection.Ltr -> LayoutDirection.Ltr
+  TextDirection.Rtl -> LayoutDirection.Rtl
+  else -> systemDirection
 }
