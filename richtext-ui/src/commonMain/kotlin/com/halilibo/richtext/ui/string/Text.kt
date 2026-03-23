@@ -39,6 +39,7 @@ import com.halilibo.richtext.ui.RichTextScope
 import com.halilibo.richtext.ui.Text
 import com.halilibo.richtext.ui.currentContentColor
 import com.halilibo.richtext.ui.currentRichTextStyle
+import com.halilibo.richtext.ui.currentTextStyle
 import com.halilibo.richtext.ui.string.RichTextString.Format
 import com.halilibo.richtext.ui.util.PhraseAnnotatedString
 import com.halilibo.richtext.ui.util.segmentIntoPhrases
@@ -143,6 +144,14 @@ public fun RichTextScope.Text(
   }
   val animatedText = animatedResult?.text ?: decoratedTextResult.annotatedString
   val underlineAlphaForOffset = animatedResult?.alphaForOffset
+  val ambientTextStyle = currentTextStyle
+  val directionOverride = remember(text.text, renderOptions.enableRtlCompatibility) {
+    if (!renderOptions.enableRtlCompatibility) {
+      null
+    } else {
+      firstStrongTextDirection(text.text)
+    }
+  }
 
   val underlineModifier = if (underlineSpecs.isNotEmpty()) {
     Modifier.drawWithContent {
@@ -162,10 +171,12 @@ public fun RichTextScope.Text(
   } else {
     Modifier
   }
+  val textStyle = applyRtlCompatibleTextDirection(ambientTextStyle, directionOverride)
 
   if (inlineContents.isEmpty()) {
     Text(
       text = animatedText,
+      textStyle = textStyle,
       onTextLayout = { layoutResult ->
         textLayoutResult = layoutResult
         onTextLayout(layoutResult)
@@ -184,6 +195,7 @@ public fun RichTextScope.Text(
 
     Text(
       text = animatedText,
+      textStyle = textStyle,
       onTextLayout = { layoutResult ->
         textLayoutResult = layoutResult
         onTextLayout(layoutResult)

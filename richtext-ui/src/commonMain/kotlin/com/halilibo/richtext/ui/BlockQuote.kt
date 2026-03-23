@@ -4,6 +4,7 @@ package com.halilibo.richtext.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import com.halilibo.richtext.ui.BlockQuoteGutter.BarGutter
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
+import com.halilibo.richtext.ui.string.applyRtlCompatibility
 
 internal val DefaultBlockQuoteGutter = BarGutter()
 
@@ -82,7 +84,9 @@ public interface BlockQuoteGutter {
   }
 
   val alpha = rememberMarkdownFade(richTextRenderOptions, markdownAnimationState)
-  Layout(modifier = Modifier.graphicsLayer { this.alpha = alpha.value }, content = {
+  Layout(modifier = Modifier
+    .applyRtlCompatibility(richTextRenderOptions)
+    .graphicsLayer { this.alpha = alpha.value }, content = {
     with(gutter) { drawGutter() }
     BasicRichText(
       modifier = Modifier.padding(top = spacing, bottom = spacing),
@@ -101,12 +105,13 @@ public interface BlockQuoteGutter {
     // the correct height.
     val contentsConstraints = constraints.offset(horizontal = -gutterWidth)
     val contentsPlaceable = contentsMeasurable.measure(contentsConstraints)
-    val layoutWidth = contentsPlaceable.width + gutterWidth
+    val layoutWidth = maxOf(contentsPlaceable.width + gutterWidth, constraints.minWidth)
     val layoutHeight = contentsPlaceable.height
 
     // Measure the gutter to fit in its min intrinsic width and exactly the
     // height of the contents.
     val gutterConstraints = constraints.copy(
+      minWidth = 0,
       maxWidth = gutterWidth,
       minHeight = layoutHeight,
       maxHeight = layoutHeight
@@ -114,8 +119,13 @@ public interface BlockQuoteGutter {
     val gutterPlaceable = gutterMeasurable.measure(gutterConstraints)
 
     layout(layoutWidth, layoutHeight) {
-      gutterPlaceable.place(IntOffset.Zero)
-      contentsPlaceable.place(gutterWidth, 0)
+      if (richTextRenderOptions.enableRtlCompatibility) {
+        gutterPlaceable.placeRelative(0, 0)
+        contentsPlaceable.placeRelative(gutterWidth, 0)
+      } else {
+        gutterPlaceable.place(IntOffset.Zero)
+        contentsPlaceable.place(gutterWidth, 0)
+      }
     }
   }
 }

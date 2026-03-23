@@ -54,13 +54,15 @@ internal val RichTextScope.currentContentColor: Color
 internal fun RichTextScope.Text(
   text: String,
   modifier: Modifier = Modifier,
+  textStyle: TextStyle? = null,
   onTextLayout: (TextLayoutResult) -> Unit = {},
   overflow: TextOverflow = TextOverflow.Clip,
   softWrap: Boolean = true,
   maxLines: Int = Int.MAX_VALUE
 ) {
-  val textColor = currentTextStyle.color.takeOrElse { currentContentColor }
-  val style = currentTextStyle.copy(color = textColor)
+  val resolvedTextStyle = textStyle ?: currentTextStyle
+  val textColor = resolvedTextStyle.color.takeOrElse { currentContentColor }
+  val style = resolvedTextStyle.copy(color = textColor)
 
   BasicText(
     text = text,
@@ -77,14 +79,16 @@ internal fun RichTextScope.Text(
 internal fun RichTextScope.Text(
   text: AnnotatedString,
   modifier: Modifier = Modifier,
+  textStyle: TextStyle? = null,
   onTextLayout: (TextLayoutResult) -> Unit = {},
   overflow: TextOverflow = TextOverflow.Clip,
   softWrap: Boolean = true,
   maxLines: Int = Int.MAX_VALUE,
   inlineContent: Map<String, InlineTextContent> = mapOf(),
 ) {
-  val textColor = currentTextStyle.color.takeOrElse { currentContentColor }
-  val style = currentTextStyle.copy(color = textColor)
+  val resolvedTextStyle = textStyle ?: currentTextStyle
+  val textColor = resolvedTextStyle.color.takeOrElse { currentContentColor }
+  val style = resolvedTextStyle.copy(color = textColor)
 
   BasicText(
     text = text,

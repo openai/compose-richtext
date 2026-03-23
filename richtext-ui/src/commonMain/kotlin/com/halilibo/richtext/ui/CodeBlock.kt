@@ -2,6 +2,7 @@ package com.halilibo.richtext.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -11,12 +12,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
+import com.halilibo.richtext.ui.string.applyRtlCompatibility
+import com.halilibo.richtext.ui.string.applyRtlCompatibleTextDirection
 
 /**
  * Defines how [CodeBlock]s are rendered.
@@ -71,7 +75,10 @@ internal fun CodeBlockStyle.resolveDefaults() = CodeBlockStyle(
     markdownAnimationState = markdownAnimationState,
     richTextRenderOptions = richTextRenderOptions,
   ) {
-    Text(text)
+    Text(
+      text = text,
+      modifier = Modifier.applyRtlCompatibility(richTextRenderOptions),
+    )
   }
 }
 
@@ -88,7 +95,11 @@ internal fun CodeBlockStyle.resolveDefaults() = CodeBlockStyle(
   children: @Composable RichTextScope.() -> Unit
 ) {
   val codeBlockStyle = currentRichTextStyle.resolveDefaults().codeBlockStyle!!
-  val textStyle = currentTextStyle.merge(codeBlockStyle.textStyle)
+  val baseTextStyle = currentTextStyle.merge(codeBlockStyle.textStyle)
+  val textStyle = applyRtlCompatibleTextDirection(
+    baseTextStyle,
+    if (richTextRenderOptions.enableRtlCompatibility) TextDirection.Ltr else null,
+  )
   val modifier = codeBlockStyle.modifier!!
   val blockPadding = with(LocalDensity.current) {
     codeBlockStyle.padding!!.toDp()
@@ -101,6 +112,7 @@ internal fun CodeBlockStyle.resolveDefaults() = CodeBlockStyle(
   ) { layoutModifier ->
     Box(
       modifier = layoutModifier
+        .applyRtlCompatibility(richTextRenderOptions)
         .graphicsLayer{ this.alpha = alpha.value }
         .then(modifier)
         .padding(blockPadding)

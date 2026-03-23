@@ -1,5 +1,6 @@
 package com.halilibo.richtext.markdown
 
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -35,6 +36,7 @@ import com.halilibo.richtext.ui.HorizontalRule
 import com.halilibo.richtext.ui.ListType.Ordered
 import com.halilibo.richtext.ui.ListType.Unordered
 import com.halilibo.richtext.ui.RichTextScope
+import com.halilibo.richtext.ui.string.applyRtlCompatibility
 import com.halilibo.richtext.ui.string.InlineContent
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
 import com.halilibo.richtext.ui.string.RichTextDecorations
@@ -297,7 +299,9 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
             richTextRenderOptions,
             richTextDecorations,
             markdownAnimationState,
-            modifier = Modifier.semantics { heading() },
+            modifier = Modifier
+              .applyRtlCompatibility(richTextRenderOptions)
+              .semantics { heading() },
           )
         }
       }

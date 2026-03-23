@@ -17,6 +17,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.halilibo.richtext.commonmark.Markdown
+import com.halilibo.richtext.ui.string.RichTextRenderOptions
 import com.halilibo.richtext.ui.material3.RichText
 
 @Preview(name = "English Heading · en-US", locale = "en-rUS", widthDp = 412, showBackground = true)
@@ -114,7 +115,12 @@ private fun MarkdownCaseContent(
       )
     }
     RichText(modifier = Modifier.fillMaxWidth()) {
-      Markdown(content = markdown)
+      Markdown(
+        content = markdown,
+        richtextRenderOptions = RichTextRenderOptions(
+          enableRtlCompatibility = true,
+        ),
+      )
     }
   }
 }
@@ -135,6 +141,8 @@ private val englishHeadingMarkdown = """
   This paragraph starts in English, links to [example.com](https://example.com),
   then mentions עברית before ending in English.
 
+  12345
+
   > English quote with a little עברית mixed in.
 """.trimIndent()
 
@@ -143,6 +151,8 @@ private val hebrewHeadingMarkdown = """
 
   הפסקה הזאת מתחילה בעברית, מוסיפה [קישור](https://example.com),
   ואז משלבת English לפני הסיום.
+
+  12345
 
   > ציטוט בעברית עם English בפנים.
 """.trimIndent()
