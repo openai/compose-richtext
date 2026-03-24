@@ -77,10 +77,12 @@ public interface BlockQuoteGutter {
 @Composable public fun RichTextScope.BlockQuote(
   markdownAnimationState: MarkdownAnimationState = remember { MarkdownAnimationState() },
   richTextRenderOptions: RichTextRenderOptions = RichTextRenderOptions(),
+  modifier: Modifier = Modifier,
   children: @Composable RichTextScope.() -> Unit
 ): Unit = BlockQuote(
   markdownAnimationState = markdownAnimationState,
   richTextRenderOptions = richTextRenderOptions,
+  modifier = modifier,
   gutterDirection = null,
   children = children,
 )
@@ -91,6 +93,7 @@ public interface BlockQuoteGutter {
 @Composable public fun RichTextScope.BlockQuote(
   markdownAnimationState: MarkdownAnimationState = remember { MarkdownAnimationState() },
   richTextRenderOptions: RichTextRenderOptions = RichTextRenderOptions(),
+  modifier: Modifier = Modifier,
   gutterDirection: TextDirection? = null,
   children: @Composable RichTextScope.() -> Unit
 ) {
@@ -100,7 +103,7 @@ public interface BlockQuoteGutter {
   }
 
   val alpha = rememberMarkdownFade(richTextRenderOptions, markdownAnimationState)
-  Layout(modifier = Modifier.graphicsLayer { this.alpha = alpha.value }, content = {
+  Layout(modifier = modifier.graphicsLayer { this.alpha = alpha.value }, content = {
     with(gutter) { drawGutter() }
     BasicRichText(
       modifier = Modifier.padding(top = spacing, bottom = spacing),

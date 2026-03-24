@@ -230,6 +230,7 @@ private val LocalListLevel = compositionLocalOf { 0 }
   listType: ListType,
   markdownAnimationState: MarkdownAnimationState = remember { MarkdownAnimationState() },
   richTextRenderOptions: RichTextRenderOptions = RichTextRenderOptions(),
+  modifier: Modifier = Modifier,
   items: List<T>,
   startIndex: Int = 0,
   drawItem: @Composable RichTextScope.(T) -> Unit
@@ -237,6 +238,7 @@ private val LocalListLevel = compositionLocalOf { 0 }
   listType = listType,
   markdownAnimationState = markdownAnimationState,
   richTextRenderOptions = richTextRenderOptions,
+  modifier = modifier,
   items = items,
   startIndex = startIndex,
   markerDirection = null,
@@ -253,6 +255,7 @@ private val LocalListLevel = compositionLocalOf { 0 }
   listType: ListType,
   markdownAnimationState: MarkdownAnimationState = remember { MarkdownAnimationState() },
   richTextRenderOptions: RichTextRenderOptions = RichTextRenderOptions(),
+  modifier: Modifier = Modifier,
   items: List<T>,
   startIndex: Int = 0,
   markerDirection: TextDirection? = null,
@@ -267,6 +270,7 @@ private val LocalListLevel = compositionLocalOf { 0 }
 
   PrefixListLayout(
     count = items.size,
+    modifier = modifier,
     itemSpacing = itemSpacing,
     prefixPadding = PaddingValues(start = markerIndent, end = contentsIndent),
     richTextRenderOptions = richTextRenderOptions,
@@ -294,6 +298,7 @@ private val LocalListLevel = compositionLocalOf { 0 }
 
 @Composable private fun PrefixListLayout(
   count: Int,
+  modifier: Modifier,
   itemSpacing: Dp,
   prefixPadding: PaddingValues,
   richTextRenderOptions: RichTextRenderOptions,
@@ -301,7 +306,7 @@ private val LocalListLevel = compositionLocalOf { 0 }
   prefixForIndex: @Composable (index: Int) -> Unit,
   itemForIndex: @Composable (index: Int) -> Unit
 ) {
-  Layout(content = {
+  Layout(modifier = modifier, content = {
     // List markers aren't selectable.
     DisableSelection {
       // Draw the markers first.
@@ -333,6 +338,7 @@ private val LocalListLevel = compositionLocalOf { 0 }
 
     // Then measure the items, offset to the right to allow space for the prefixes and gap.
     val itemConstraints = constraints.copy(
+      minWidth = 0,
       maxWidth = if (constraints.hasBoundedWidth) {
         (constraints.maxWidth - widestPrefix.width).coerceAtLeast(0)
       } else {

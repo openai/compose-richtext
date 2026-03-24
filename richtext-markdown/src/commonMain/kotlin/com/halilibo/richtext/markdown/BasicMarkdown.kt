@@ -1,6 +1,7 @@
 package com.halilibo.richtext.markdown
 
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -257,6 +258,14 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
         BlockQuote(
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
+          modifier = if (
+            richTextRenderOptions.enableRtlCompatibility &&
+            astNode.links.parent?.type is AstDocument
+          ) {
+            Modifier.fillMaxWidth()
+          } else {
+            Modifier
+          },
           gutterDirection = if (richTextRenderOptions.enableRtlCompatibility) {
             astNode.firstStrongTextDirectionInFirstLine()
           } else {
@@ -279,6 +288,14 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
           listType = Unordered,
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
+          modifier = if (
+            richTextRenderOptions.enableRtlCompatibility &&
+            astNode.links.parent?.type is AstDocument
+          ) {
+            Modifier.fillMaxWidth()
+          } else {
+            Modifier
+          },
           items = astNode.filterChildrenType<AstListItem>().toList(),
           markerDirection = markerDirection,
         ) { astListItem ->
@@ -303,6 +320,14 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
           listType = Ordered,
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
+          modifier = if (
+            richTextRenderOptions.enableRtlCompatibility &&
+            astNode.links.parent?.type is AstDocument
+          ) {
+            Modifier.fillMaxWidth()
+          } else {
+            Modifier
+          },
           items = astNode.childrenSequence().toList(),
           startIndex = astNodeType.startNumber - 1,
           markerDirection = markerDirection,

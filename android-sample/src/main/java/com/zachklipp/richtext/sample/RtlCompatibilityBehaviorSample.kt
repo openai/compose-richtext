@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -25,20 +26,13 @@ import com.halilibo.richtext.ui.string.RichTextRenderOptions
 @Composable
 private fun QuoteBehaviorPreview() {
   BehaviorPreviewSurface {
-    BehaviorPreviewColumn {
-      BehaviorSection(
-        title = "English-starting quote keeps its gutter on the left",
-        markdown = englishStartingQuoteMarkdown,
-      )
-      BehaviorSection(
-        title = "Hebrew-starting quote keeps its gutter on the right",
-        markdown = hebrewStartingQuoteMarkdown,
-      )
-      BehaviorSection(
-        title = "Neutral quote falls back to the system side",
-        markdown = symbolsQuoteMarkdown,
-      )
-    }
+    BehaviorPreviewColumn(
+      markdownSections = listOf(
+        englishStartingQuoteMarkdown,
+        hebrewStartingQuoteMarkdown,
+        symbolsQuoteMarkdown,
+      ),
+    )
   }
 }
 
@@ -46,20 +40,13 @@ private fun QuoteBehaviorPreview() {
 @Composable
 private fun ListBehaviorPreview() {
   BehaviorPreviewSurface {
-    BehaviorPreviewColumn {
-      BehaviorSection(
-        title = "English first item keeps bullets on the left",
-        markdown = englishStartingListMarkdown,
-      )
-      BehaviorSection(
-        title = "Hebrew first item keeps bullets on the right",
-        markdown = hebrewStartingListMarkdown,
-      )
-      BehaviorSection(
-        title = "Neutral first item falls back to the system side",
-        markdown = neutralStartingListMarkdown,
-      )
-    }
+    BehaviorPreviewColumn(
+      markdownSections = listOf(
+        englishStartingListMarkdown,
+        hebrewStartingListMarkdown,
+        neutralStartingListMarkdown,
+      ),
+    )
   }
 }
 
@@ -132,19 +119,21 @@ private fun BehaviorPreviewColumn(
 }
 
 @Composable
-private fun BehaviorSection(
-  title: String,
-  markdown: String,
+private fun BehaviorPreviewColumn(
+  markdownSections: List<String>,
 ) {
   Column(
-    modifier = Modifier.fillMaxWidth(),
-    verticalArrangement = Arrangement.spacedBy(8.dp),
+    modifier = Modifier
+      .fillMaxWidth()
+      .padding(16.dp),
+    verticalArrangement = Arrangement.spacedBy(24.dp),
   ) {
-    Text(
-      text = title,
-      style = MaterialTheme.typography.labelLarge,
-    )
-    BehaviorMarkdown(markdown = markdown)
+    markdownSections.forEachIndexed { index, markdown ->
+      BehaviorMarkdown(markdown = markdown)
+      if (index != markdownSections.lastIndex) {
+        HorizontalDivider()
+      }
+    }
   }
 }
 
@@ -157,10 +146,8 @@ private fun CodeComparisonSection(
     modifier = Modifier.fillMaxWidth(),
     verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
-    Text(
-      text = title,
-      style = MaterialTheme.typography.labelLarge,
-    )
+    BehaviorMarkdown(markdown = "### $title")
+    HorizontalDivider()
     Text(
       text = "compatibility off",
       style = MaterialTheme.typography.bodySmall,
@@ -169,6 +156,7 @@ private fun CodeComparisonSection(
       markdown = markdown,
       enableRtlCompatibility = false,
     )
+    HorizontalDivider()
     Text(
       text = "compatibility on",
       style = MaterialTheme.typography.bodySmall,
@@ -189,10 +177,8 @@ private fun TopLevelWidthSection(
     modifier = Modifier.fillMaxWidth(),
     verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
-    Text(
-      text = title,
-      style = MaterialTheme.typography.labelLarge,
-    )
+    BehaviorMarkdown(markdown = "### $title")
+    HorizontalDivider()
     Text(
       text = "compatibility off",
       style = MaterialTheme.typography.bodySmall,
@@ -201,6 +187,7 @@ private fun TopLevelWidthSection(
       markdown = markdown,
       enableRtlCompatibility = false,
     )
+    HorizontalDivider()
     Text(
       text = "compatibility on",
       style = MaterialTheme.typography.bodySmall,
@@ -249,30 +236,42 @@ private fun ShrinkWrappedBehaviorMarkdown(
 }
 
 private val englishStartingQuoteMarkdown = """
+  ### English-starting quote keeps its gutter on the left
+
   > English opens this quote.
   > אחר כך מופיעה עברית.
 """.trimIndent()
 
 private val hebrewStartingQuoteMarkdown = """
+  ### Hebrew-starting quote keeps its gutter on the right
+
   > הציטוט הזה מתחיל בעברית.
   > English shows up later.
 """.trimIndent()
 
 private val symbolsQuoteMarkdown = """
+  ### Neutral quote falls back to the system side
+
   > () [] {} <> / == -> ++
 """.trimIndent()
 
 private val englishStartingListMarkdown = """
+  ### English first item keeps bullets on the left
+
   - English starts this list item.
   - אחר כך מופיע פריט בעברית.
 """.trimIndent()
 
 private val hebrewStartingListMarkdown = """
+  ### Hebrew first item keeps bullets on the right
+
   - הפריט הראשון מתחיל בעברית.
   - English appears in the second item.
 """.trimIndent()
 
 private val neutralStartingListMarkdown = """
+  ### Neutral first item falls back to the system side
+
   - 12345
   - English appears in the second item.
 """.trimIndent()
