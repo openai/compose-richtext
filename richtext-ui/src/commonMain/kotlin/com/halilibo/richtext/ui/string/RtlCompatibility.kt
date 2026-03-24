@@ -1,19 +1,10 @@
 package com.halilibo.richtext.ui.string
 
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.LayoutDirection
 import kotlin.text.CharDirectionality
-
-public fun Modifier.applyRtlCompatibility(renderOptions: RichTextRenderOptions): Modifier =
-  if (renderOptions.enableRtlCompatibility) {
-    fillMaxWidth()
-  } else {
-    this
-  }
 
 internal fun firstStrongTextDirection(text: CharSequence): TextDirection? {
   for (char in text) {

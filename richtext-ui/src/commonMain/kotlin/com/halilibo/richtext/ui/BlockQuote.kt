@@ -26,7 +26,6 @@ import androidx.compose.ui.unit.sp
 import com.halilibo.richtext.ui.BlockQuoteGutter.BarGutter
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
-import com.halilibo.richtext.ui.string.applyRtlCompatibility
 import com.halilibo.richtext.ui.string.resolveRtlCompatibleLayoutDirection
 
 internal val DefaultBlockQuoteGutter = BarGutter()
@@ -101,9 +100,7 @@ public interface BlockQuoteGutter {
   }
 
   val alpha = rememberMarkdownFade(richTextRenderOptions, markdownAnimationState)
-  Layout(modifier = Modifier
-    .applyRtlCompatibility(richTextRenderOptions)
-    .graphicsLayer { this.alpha = alpha.value }, content = {
+  Layout(modifier = Modifier.graphicsLayer { this.alpha = alpha.value }, content = {
     with(gutter) { drawGutter() }
     BasicRichText(
       modifier = Modifier.padding(top = spacing, bottom = spacing),

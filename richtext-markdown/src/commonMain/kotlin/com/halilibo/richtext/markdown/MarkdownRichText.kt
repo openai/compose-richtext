@@ -34,7 +34,6 @@ import com.halilibo.richtext.ui.string.RichTextDecorations
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
 import com.halilibo.richtext.ui.string.RichTextString
 import com.halilibo.richtext.ui.string.Text
-import com.halilibo.richtext.ui.string.applyRtlCompatibility
 import com.halilibo.richtext.ui.string.withFormat
 
 /**
@@ -76,7 +75,7 @@ internal fun RichTextScope.MarkdownRichText(
 
   Text(
     text = richText,
-    modifier = modifier.applyRtlCompatibility(richTextRenderOptions),
+    modifier = modifier,
     isLeafText = astNode.isLastInTree(),
     renderOptions = richTextRenderOptions,
     sharedAnimationState = markdownAnimationState,

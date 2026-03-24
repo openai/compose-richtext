@@ -1,6 +1,8 @@
 package com.zachklipp.richtext.sample
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -10,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
@@ -73,6 +76,30 @@ private fun CodeWidthBehaviorPreview() {
         title = "Symbols-only code keeps the same width",
         markdown = symbolsCodeMarkdown,
       )
+    }
+  }
+}
+
+@Preview(name = "Top-level width behavior · zh", locale = "zh", widthDp = 412, showBackground = true)
+@Composable
+private fun TopLevelWidthBehaviorPreview() {
+  SampleTheme {
+    Surface {
+      Column(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp),
+      ) {
+        TopLevelWidthSection(
+          title = "English text stays shrink-wrapped in zh locale",
+          markdown = englishTopLevelMarkdown,
+        )
+        TopLevelWidthSection(
+          title = "Chinese text stays shrink-wrapped in zh locale",
+          markdown = chineseTopLevelMarkdown,
+        )
+      }
     }
   }
 }
@@ -154,6 +181,38 @@ private fun CodeComparisonSection(
 }
 
 @Composable
+private fun TopLevelWidthSection(
+  title: String,
+  markdown: String,
+) {
+  Column(
+    modifier = Modifier.fillMaxWidth(),
+    verticalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    Text(
+      text = title,
+      style = MaterialTheme.typography.labelLarge,
+    )
+    Text(
+      text = "compatibility off",
+      style = MaterialTheme.typography.bodySmall,
+    )
+    ShrinkWrappedBehaviorMarkdown(
+      markdown = markdown,
+      enableRtlCompatibility = false,
+    )
+    Text(
+      text = "compatibility on",
+      style = MaterialTheme.typography.bodySmall,
+    )
+    ShrinkWrappedBehaviorMarkdown(
+      markdown = markdown,
+      enableRtlCompatibility = true,
+    )
+  }
+}
+
+@Composable
 private fun BehaviorMarkdown(
   markdown: String,
   enableRtlCompatibility: Boolean = true,
@@ -165,6 +224,27 @@ private fun BehaviorMarkdown(
         enableRtlCompatibility = enableRtlCompatibility,
       ),
     )
+  }
+}
+
+@Composable
+private fun ShrinkWrappedBehaviorMarkdown(
+  markdown: String,
+  enableRtlCompatibility: Boolean,
+) {
+  Box(
+    modifier = Modifier
+      .background(color = Color(0xFFE9E9E9))
+      .padding(horizontal = 12.dp, vertical = 8.dp),
+  ) {
+    RichText {
+      Markdown(
+        content = markdown,
+        richtextRenderOptions = RichTextRenderOptions(
+          enableRtlCompatibility = enableRtlCompatibility,
+        ),
+      )
+    }
   }
 }
 
@@ -208,4 +288,12 @@ private val symbolsCodeMarkdown = """
   ```
   () [] {} <> / == -> ++
   ```
+""".trimIndent()
+
+private val englishTopLevelMarkdown = """
+  1:53 AM is the current time in Hong Kong.
+""".trimIndent()
+
+private val chineseTopLevelMarkdown = """
+  现在香港时间是凌晨 1:53。
 """.trimIndent()
