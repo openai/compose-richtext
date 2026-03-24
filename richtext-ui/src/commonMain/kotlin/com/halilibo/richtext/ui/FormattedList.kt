@@ -333,7 +333,11 @@ private val LocalListLevel = compositionLocalOf { 0 }
 
     // Then measure the items, offset to the right to allow space for the prefixes and gap.
     val itemConstraints = constraints.copy(
-      maxWidth = (constraints.maxWidth - widestPrefix.width).coerceAtLeast(0)
+      maxWidth = if (constraints.hasBoundedWidth) {
+        (constraints.maxWidth - widestPrefix.width).coerceAtLeast(0)
+      } else {
+        Constraints.Infinity
+      }
     )
     val itemPlaceables = itemMeasurables.map { item ->
       item.measure(itemConstraints)

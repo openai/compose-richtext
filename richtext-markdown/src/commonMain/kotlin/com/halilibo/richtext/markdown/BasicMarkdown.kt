@@ -1,5 +1,7 @@
 package com.halilibo.richtext.markdown
 
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -28,6 +30,7 @@ import com.halilibo.richtext.markdown.node.AstText
 import com.halilibo.richtext.markdown.node.AstThematicBreak
 import com.halilibo.richtext.markdown.node.AstUnorderedList
 import com.halilibo.richtext.ui.BlockQuote
+import com.halilibo.richtext.ui.BasicRichText
 import com.halilibo.richtext.ui.CodeBlock
 import com.halilibo.richtext.ui.FormattedList
 import com.halilibo.richtext.ui.Heading
@@ -239,7 +242,17 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
     visitChildren: @Composable (AstNode) -> Unit
   ) {
     when (val astNodeType = astNode.type) {
-      is AstDocument -> visitChildren(astNode)
+      is AstDocument -> {
+        BasicRichText(
+          modifier = if (richTextRenderOptions.enableRtlCompatibility) {
+            Modifier.width(IntrinsicSize.Max)
+          } else {
+            Modifier
+          },
+        ) {
+          visitChildren(astNode)
+        }
+      }
       is AstBlockQuote -> {
         BlockQuote(
           markdownAnimationState = markdownAnimationState,

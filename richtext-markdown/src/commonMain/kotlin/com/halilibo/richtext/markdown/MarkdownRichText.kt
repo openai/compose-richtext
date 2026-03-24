@@ -10,6 +10,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.halilibo.richtext.markdown.node.AstBlockQuote
 import com.halilibo.richtext.markdown.node.AstCode
+import com.halilibo.richtext.markdown.node.AstDocument
 import com.halilibo.richtext.markdown.node.AstEmphasis
 import com.halilibo.richtext.markdown.node.AstFencedCodeBlock
 import com.halilibo.richtext.markdown.node.AstHardLineBreak
@@ -75,7 +76,14 @@ internal fun RichTextScope.MarkdownRichText(
 
   Text(
     text = richText,
-    modifier = modifier,
+    modifier = if (
+      richTextRenderOptions.enableRtlCompatibility &&
+      astNode.links.parent?.type is AstDocument
+    ) {
+      modifier.fillMaxWidth()
+    } else {
+      modifier
+    },
     isLeafText = astNode.isLastInTree(),
     renderOptions = richTextRenderOptions,
     sharedAnimationState = markdownAnimationState,
