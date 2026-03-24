@@ -120,7 +120,15 @@ public interface BlockQuoteGutter {
     // Measure the contents with the confined width.
     // This must be done before measuring the gutter so that the gutter gets
     // the correct height.
-    val contentsConstraints = constraints.offset(horizontal = -gutterWidth)
+    val contentsConstraints = constraints
+      .offset(horizontal = -gutterWidth)
+      .let {
+        if (richTextRenderOptions.enableRtlCompatibility && it.hasBoundedWidth) {
+          it.copy(minWidth = it.maxWidth)
+        } else {
+          it
+        }
+      }
     val contentsPlaceable = contentsMeasurable.measure(contentsConstraints)
     val layoutWidth = maxOf(contentsPlaceable.width + gutterWidth, constraints.minWidth)
     val layoutHeight = contentsPlaceable.height

@@ -78,7 +78,11 @@ internal fun RichTextScope.MarkdownRichText(
     text = richText,
     modifier = if (
       richTextRenderOptions.enableRtlCompatibility &&
-      astNode.links.parent?.type is AstDocument
+      astNode.links.parent?.type.let { parentType ->
+        parentType is AstDocument ||
+          parentType is AstBlockQuote ||
+          parentType is AstListItem
+      }
     ) {
       modifier.fillMaxWidth()
     } else {
