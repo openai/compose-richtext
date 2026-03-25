@@ -6,9 +6,10 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import com.halilibo.richtext.markdown.node.AstDocument
 import com.halilibo.richtext.markdown.node.AstBlockQuote
 import com.halilibo.richtext.markdown.node.AstCode
 import com.halilibo.richtext.markdown.node.AstEmphasis
@@ -35,7 +36,6 @@ import com.halilibo.richtext.ui.string.RichTextDecorations
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
 import com.halilibo.richtext.ui.string.RichTextString
 import com.halilibo.richtext.ui.string.Text
-import com.halilibo.richtext.ui.string.applyRtlCompatibility
 import com.halilibo.richtext.ui.string.withFormat
 
 /**
@@ -74,25 +74,49 @@ internal fun RichTextScope.MarkdownRichText(
   val richText = remember(astNode) {
     computeRichTextString(astNode, inlineContentOverride)
   }
+  val isCompatibilityParagraph = richTextRenderOptions.enableRtlCompatibility &&
+    (astNode.type is AstParagraph || astNode.type is AstHeading)
+  val blockTextDirection = if (isCompatibilityParagraph) {
+    firstStrongLetterLayoutDirection(richText.text)
+  } else {
+    null
+  }
 
   Text(
     text = richText,
-    modifier = if (
-      astNode.links.parent?.type.let { parentType ->
-        parentType is AstDocument ||
-          parentType is AstBlockQuote ||
-          parentType is AstListItem
-      }
-    ) {
-      modifier.applyRtlCompatibility(richTextRenderOptions)
-    } else {
-      modifier
-    },
+    modifier = if (isCompatibilityParagraph) modifier.fillMaxWidth() else modifier,
     isLeafText = astNode.isLastInTree(),
     renderOptions = richTextRenderOptions,
     sharedAnimationState = markdownAnimationState,
     decorations = richTextDecorations,
+    textAlign = when (blockTextDirection) {
+      TextDirection.Rtl -> TextAlign.Right
+      TextDirection.Ltr -> TextAlign.Left
+      else -> null
+    },
+    textDirection = blockTextDirection,
   )
+}
+
+internal fun firstStrongLetterLayoutDirection(text: String): TextDirection? {
+  for (char in text) {
+    if (!char.isLetter()) continue
+
+    when (Character.getDirectionality(char)) {
+      Character.DIRECTIONALITY_RIGHT_TO_LEFT,
+      Character.DIRECTIONALITY_RIGHT_TO_LEFT_ARABIC,
+      Character.DIRECTIONALITY_RIGHT_TO_LEFT_EMBEDDING,
+      Character.DIRECTIONALITY_RIGHT_TO_LEFT_OVERRIDE,
+      -> return TextDirection.Rtl
+
+      Character.DIRECTIONALITY_LEFT_TO_RIGHT,
+      Character.DIRECTIONALITY_LEFT_TO_RIGHT_EMBEDDING,
+      Character.DIRECTIONALITY_LEFT_TO_RIGHT_OVERRIDE,
+      -> return TextDirection.Ltr
+    }
+  }
+
+  return null
 }
 
 private fun AstNode?.isLastInTree(): Boolean = this?.links?.parent == null ||

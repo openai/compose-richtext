@@ -4,7 +4,6 @@ package com.halilibo.richtext.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,7 +15,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -26,9 +24,6 @@ import androidx.compose.ui.unit.sp
 import com.halilibo.richtext.ui.BlockQuoteGutter.BarGutter
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
-import com.halilibo.richtext.ui.string.applyRtlCompatibility
-import com.halilibo.richtext.ui.string.resolveRtlCompatibleLayoutDirection
-import com.halilibo.richtext.ui.string.shouldFillWidthForRtlCompatibility
 
 internal val DefaultBlockQuoteGutter = BarGutter()
 
@@ -80,21 +75,6 @@ public interface BlockQuoteGutter {
   markdownAnimationState: MarkdownAnimationState = remember { MarkdownAnimationState() },
   richTextRenderOptions: RichTextRenderOptions = RichTextRenderOptions(),
   children: @Composable RichTextScope.() -> Unit
-): Unit = BlockQuote(
-  markdownAnimationState = markdownAnimationState,
-  richTextRenderOptions = richTextRenderOptions,
-  gutterDirection = null,
-  children = children,
-)
-
-/**
- * Draws a block quote, with a [BlockQuoteGutter] drawn beside the children on the start side.
- */
-@Composable public fun RichTextScope.BlockQuote(
-  markdownAnimationState: MarkdownAnimationState = remember { MarkdownAnimationState() },
-  richTextRenderOptions: RichTextRenderOptions = RichTextRenderOptions(),
-  gutterDirection: TextDirection? = null,
-  children: @Composable RichTextScope.() -> Unit
 ) {
   val gutter = currentRichTextStyle.resolveDefaults().blockQuoteGutter!!
   val spacing = gutter.verticalContentPadding ?: with(LocalDensity.current) {
@@ -102,9 +82,7 @@ public interface BlockQuoteGutter {
   }
 
   val alpha = rememberMarkdownFade(richTextRenderOptions, markdownAnimationState)
-  Layout(modifier = Modifier
-    .applyRtlCompatibility(richTextRenderOptions)
-    .graphicsLayer { this.alpha = alpha.value }, content = {
+  Layout(modifier = Modifier.graphicsLayer { this.alpha = alpha.value }, content = {
     with(gutter) { drawGutter() }
     BasicRichText(
       modifier = Modifier.padding(top = spacing, bottom = spacing),
@@ -121,23 +99,14 @@ public interface BlockQuoteGutter {
     // Measure the contents with the confined width.
     // This must be done before measuring the gutter so that the gutter gets
     // the correct height.
-    val contentsConstraints = constraints
-      .offset(horizontal = -gutterWidth)
-      .let {
-        if (shouldFillWidthForRtlCompatibility(richTextRenderOptions, gutterDirection) && it.hasBoundedWidth) {
-          it.copy(minWidth = it.maxWidth)
-        } else {
-          it
-        }
-      }
+    val contentsConstraints = constraints.offset(horizontal = -gutterWidth)
     val contentsPlaceable = contentsMeasurable.measure(contentsConstraints)
-    val layoutWidth = maxOf(contentsPlaceable.width + gutterWidth, constraints.minWidth)
+    val layoutWidth = contentsPlaceable.width + gutterWidth
     val layoutHeight = contentsPlaceable.height
 
     // Measure the gutter to fit in its min intrinsic width and exactly the
     // height of the contents.
     val gutterConstraints = constraints.copy(
-      minWidth = 0,
       maxWidth = gutterWidth,
       minHeight = layoutHeight,
       maxHeight = layoutHeight
@@ -145,22 +114,8 @@ public interface BlockQuoteGutter {
     val gutterPlaceable = gutterMeasurable.measure(gutterConstraints)
 
     layout(layoutWidth, layoutHeight) {
-      if (richTextRenderOptions.enableRtlCompatibility) {
-        val resolvedLayoutDirection = resolveRtlCompatibleLayoutDirection(
-          contentDirection = gutterDirection,
-          systemDirection = layoutDirection,
-        )
-        if (resolvedLayoutDirection == androidx.compose.ui.unit.LayoutDirection.Rtl) {
-          contentsPlaceable.place(0, 0)
-          gutterPlaceable.place(layoutWidth - gutterWidth, 0)
-        } else {
-          gutterPlaceable.place(0, 0)
-          contentsPlaceable.place(gutterWidth, 0)
-        }
-      } else {
-        gutterPlaceable.place(IntOffset.Zero)
-        contentsPlaceable.place(gutterWidth, 0)
-      }
+      gutterPlaceable.place(IntOffset.Zero)
+      contentsPlaceable.place(gutterWidth, 0)
     }
   }
 }
