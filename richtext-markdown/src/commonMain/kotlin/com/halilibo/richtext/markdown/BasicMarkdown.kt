@@ -320,9 +320,7 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
             richTextRenderOptions,
             richTextDecorations,
             markdownAnimationState,
-            modifier = Modifier
-              .applyRtlCompatibility(richTextRenderOptions)
-              .semantics { heading() },
+            modifier = Modifier.semantics { heading() },
           )
         }
       }

@@ -15,6 +15,21 @@ public fun Modifier.applyRtlCompatibility(renderOptions: RichTextRenderOptions):
     this
   }
 
+public fun Modifier.applyRtlCompatibility(
+  renderOptions: RichTextRenderOptions,
+  contentDirection: TextDirection?,
+): Modifier =
+  if (shouldFillWidthForRtlCompatibility(renderOptions, contentDirection)) {
+    fillMaxWidth()
+  } else {
+    this
+  }
+
+internal fun shouldFillWidthForRtlCompatibility(
+  renderOptions: RichTextRenderOptions,
+  contentDirection: TextDirection?,
+): Boolean = renderOptions.enableRtlCompatibility && contentDirection == TextDirection.Rtl
+
 internal fun firstStrongTextDirection(text: CharSequence): TextDirection? {
   for (char in text) {
     when (char.directionality) {

@@ -3,6 +3,8 @@ package com.halilibo.richtext.markdown
 import androidx.compose.ui.text.style.TextDirection
 import com.halilibo.richtext.markdown.node.AstCode
 import com.halilibo.richtext.markdown.node.AstHardLineBreak
+import com.halilibo.richtext.markdown.node.AstHtmlBlock
+import com.halilibo.richtext.markdown.node.AstHtmlInline
 import com.halilibo.richtext.markdown.node.AstImage
 import com.halilibo.richtext.markdown.node.AstNode
 import com.halilibo.richtext.markdown.node.AstNodeType
@@ -61,6 +63,8 @@ internal fun AstNode.firstStrongTextDirectionInSubtree(): TextDirection? {
   when (val currentType = type) {
     is AstText -> return firstStrongTextDirection(currentType.literal)
     is AstCode -> return firstStrongTextDirection(currentType.literal)
+    is AstHtmlBlock -> return firstStrongTextDirection(currentType.literal.removeHtmlTags())
+    is AstHtmlInline -> return firstStrongTextDirection(currentType.literal.removeHtmlTags())
     else -> Unit
   }
 
@@ -75,6 +79,8 @@ private fun AstNode.appendFirstLineText(builder: StringBuilder): Boolean {
   when (val currentType = type) {
     is AstText -> builder.append(currentType.literal)
     is AstCode -> builder.append(currentType.literal)
+    is AstHtmlBlock -> builder.append(currentType.literal.removeHtmlTags())
+    is AstHtmlInline -> builder.append(currentType.literal.removeHtmlTags())
     is AstSoftLineBreak, is AstHardLineBreak -> return true
     else -> Unit
   }
@@ -105,4 +111,23 @@ private fun firstStrongTextDirection(text: CharSequence): TextDirection? {
   }
 
   return null
+}
+
+private fun String.removeHtmlTags(): String {
+  if ('<' !in this) {
+    return this
+  }
+
+  val builder = StringBuilder(length)
+  var insideTag = false
+  for (char in this) {
+    when (char) {
+      '<' -> insideTag = true
+      '>' -> insideTag = false
+      else -> if (!insideTag) {
+        builder.append(char)
+      }
+    }
+  }
+  return builder.toString()
 }

@@ -28,6 +28,7 @@ import com.halilibo.richtext.ui.string.MarkdownAnimationState
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
 import com.halilibo.richtext.ui.string.applyRtlCompatibility
 import com.halilibo.richtext.ui.string.resolveRtlCompatibleLayoutDirection
+import com.halilibo.richtext.ui.string.shouldFillWidthForRtlCompatibility
 
 internal val DefaultBlockQuoteGutter = BarGutter()
 
@@ -120,7 +121,15 @@ public interface BlockQuoteGutter {
     // Measure the contents with the confined width.
     // This must be done before measuring the gutter so that the gutter gets
     // the correct height.
-    val contentsConstraints = constraints.offset(horizontal = -gutterWidth)
+    val contentsConstraints = constraints
+      .offset(horizontal = -gutterWidth)
+      .let {
+        if (shouldFillWidthForRtlCompatibility(richTextRenderOptions, gutterDirection) && it.hasBoundedWidth) {
+          it.copy(minWidth = it.maxWidth)
+        } else {
+          it
+        }
+      }
     val contentsPlaceable = contentsMeasurable.measure(contentsConstraints)
     val layoutWidth = maxOf(contentsPlaceable.width + gutterWidth, constraints.minWidth)
     val layoutHeight = contentsPlaceable.height
