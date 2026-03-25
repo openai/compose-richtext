@@ -65,11 +65,11 @@ private fun ListBehaviorPreview() {
 private fun CodeWidthBehaviorPreview() {
   BehaviorPreviewSurface {
     BehaviorPreviewColumn {
-      BehaviorSection(
+      CodeComparisonSection(
         title = "English code keeps the same width",
         markdown = englishCodeMarkdown,
       )
-      BehaviorSection(
+      CodeComparisonSection(
         title = "Symbols-only code keeps the same width",
         markdown = symbolsCodeMarkdown,
       )
@@ -139,13 +139,48 @@ private fun BehaviorSection(
 }
 
 @Composable
+private fun CodeComparisonSection(
+  title: String,
+  markdown: String,
+) {
+  Column(
+    modifier = Modifier.fillMaxWidth(),
+    verticalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    Text(
+      text = title,
+      style = MaterialTheme.typography.labelLarge,
+    )
+    Text(
+      text = "compatibility off",
+      style = MaterialTheme.typography.bodySmall,
+    )
+    BehaviorMarkdown(
+      markdown = markdown,
+      enableRtlCompatibility = false,
+    )
+    Text(
+      text = "compatibility on",
+      style = MaterialTheme.typography.bodySmall,
+    )
+    BehaviorMarkdown(
+      markdown = markdown,
+      enableRtlCompatibility = true,
+    )
+  }
+}
+
+@Composable
 private fun BehaviorMarkdown(
   markdown: String,
+  enableRtlCompatibility: Boolean = true,
 ) {
   RichText(modifier = Modifier.fillMaxWidth()) {
     Markdown(
       content = markdown,
-      richtextRenderOptions = RichTextRenderOptions(),
+      richtextRenderOptions = RichTextRenderOptions(
+        enableRtlCompatibility = enableRtlCompatibility,
+      ),
     )
   }
 }

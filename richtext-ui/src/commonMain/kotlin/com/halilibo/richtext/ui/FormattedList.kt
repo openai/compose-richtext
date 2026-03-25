@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
@@ -28,6 +29,7 @@ import com.halilibo.richtext.ui.ListType.Ordered
 import com.halilibo.richtext.ui.ListType.Unordered
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
+import com.halilibo.richtext.ui.string.resolveRtlCompatibleLayoutDirection
 import kotlin.math.max
 
 public enum class ListType {
@@ -193,7 +195,30 @@ private val LocalListLevel = compositionLocalOf { 0 }
 @Composable public inline fun RichTextScope.FormattedList(
   listType: ListType,
   vararg children: @Composable RichTextScope.() -> Unit
-): Unit = FormattedList(listType, items = children.asList(), startIndex = 0) { it() }
+): Unit = FormattedList(
+  listType = listType,
+  markerDirection = null,
+  items = children.asList(),
+  startIndex = 0,
+) { it() }
+
+/**
+ * Creates a formatted list such as a bullet list or numbered list.
+ *
+ * @sample com.halilibo.richtext.ui.previews.OrderedListPreview
+ * @sample com.halilibo.richtext.ui.previews.UnorderedListPreview
+ */
+@Suppress("NOTHING_TO_INLINE")
+@Composable public inline fun RichTextScope.FormattedList(
+  listType: ListType,
+  markerDirection: TextDirection?,
+  vararg children: @Composable RichTextScope.() -> Unit
+): Unit = FormattedList(
+  listType = listType,
+  items = children.asList(),
+  startIndex = 0,
+  markerDirection = markerDirection,
+) { it() }
 
 /**
  * Creates a formatted list such as a bullet list or numbered list.
@@ -208,6 +233,30 @@ private val LocalListLevel = compositionLocalOf { 0 }
   items: List<T>,
   startIndex: Int = 0,
   drawItem: @Composable RichTextScope.(T) -> Unit
+): Unit = FormattedList(
+  listType = listType,
+  markdownAnimationState = markdownAnimationState,
+  richTextRenderOptions = richTextRenderOptions,
+  items = items,
+  startIndex = startIndex,
+  markerDirection = null,
+  drawItem = drawItem,
+)
+
+/**
+ * Creates a formatted list such as a bullet list or numbered list.
+ *
+ * @sample com.halilibo.richtext.ui.previews.OrderedListPreview
+ * @sample com.halilibo.richtext.ui.previews.UnorderedListPreview
+ */
+@Composable public fun <T> RichTextScope.FormattedList(
+  listType: ListType,
+  markdownAnimationState: MarkdownAnimationState = remember { MarkdownAnimationState() },
+  richTextRenderOptions: RichTextRenderOptions = RichTextRenderOptions(),
+  items: List<T>,
+  startIndex: Int = 0,
+  markerDirection: TextDirection? = null,
+  drawItem: @Composable RichTextScope.(T) -> Unit
 ) {
   val listStyle = currentRichTextStyle.resolveDefaults().listStyle!!
   val density = LocalDensity.current
@@ -220,11 +269,22 @@ private val LocalListLevel = compositionLocalOf { 0 }
     count = items.size,
     itemSpacing = itemSpacing,
     prefixPadding = PaddingValues(start = markerIndent, end = contentsIndent),
+    richTextRenderOptions = richTextRenderOptions,
+    markerDirection = markerDirection,
     prefixForIndex = { index ->
       val alpha = rememberMarkdownFade(richTextRenderOptions, markdownAnimationState)
       Box(modifier = Modifier.graphicsLayer { this.alpha = alpha.value }) {
         when (listType) {
-          Ordered -> listStyle.orderedMarkers!!().drawMarker(currentLevel, startIndex + index)
+          Ordered -> {
+            val markerTextStyle = if (richTextRenderOptions.enableRtlCompatibility) {
+              currentTextStyle.copy(textDirection = TextDirection.ContentOrLtr)
+            } else {
+              currentTextStyle
+            }
+            CompositionLocalProvider(LocalInternalTextStyle provides markerTextStyle) {
+              listStyle.orderedMarkers!!().drawMarker(currentLevel, startIndex + index)
+            }
+          }
           Unordered -> listStyle.unorderedMarkers!!().drawMarker(currentLevel)
         }
       }
@@ -245,6 +305,8 @@ private val LocalListLevel = compositionLocalOf { 0 }
   count: Int,
   itemSpacing: Dp,
   prefixPadding: PaddingValues,
+  richTextRenderOptions: RichTextRenderOptions,
+  markerDirection: TextDirection?,
   prefixForIndex: @Composable (index: Int) -> Unit,
   itemForIndex: @Composable (index: Int) -> Unit
 ) {
@@ -279,16 +341,30 @@ private val LocalListLevel = compositionLocalOf { 0 }
     val widestPrefix = prefixPlaceables.maxByOrNull { it.width }!!
 
     // Then measure the items, offset to the right to allow space for the prefixes and gap.
-    val itemConstraints = constraints.copy(
-      maxWidth = (constraints.maxWidth - widestPrefix.width).coerceAtLeast(0)
-    )
+    val itemConstraints =
+      if (constraints.maxWidth == Constraints.Infinity) {
+        constraints
+      } else {
+        constraints.copy(
+          maxWidth = (constraints.maxWidth - widestPrefix.width).coerceAtLeast(0),
+        )
+      }
     val itemPlaceables = itemMeasurables.map { item ->
       item.measure(itemConstraints)
     }
       .toList()
     val widestItem = itemPlaceables.maxByOrNull { it.width }!!
 
-    val listWidth = widestPrefix.width + widestItem.width
+    val listWidth =
+      if (
+        richTextRenderOptions.enableRtlCompatibility &&
+        constraints.hasBoundedWidth &&
+        constraints.maxWidth != Constraints.Infinity
+      ) {
+        constraints.maxWidth
+      } else {
+        widestPrefix.width + widestItem.width
+      }
     val itemsHeight = itemPlaceables.sumOf { it.height } +
         (itemPlaceables.size - 1) * itemSpacing.roundToPx()
     val prefixesHeight = prefixPlaceables.sumOf { it.height } +
@@ -297,24 +373,36 @@ private val LocalListLevel = compositionLocalOf { 0 }
     val listHeight = maxOf(itemsHeight, prefixesHeight)
     layout(listWidth, listHeight) {
       var y = 0
+      val markerOnRight = richTextRenderOptions.enableRtlCompatibility &&
+        resolveRtlCompatibleLayoutDirection(markerDirection, layoutDirection) ==
+        androidx.compose.ui.unit.LayoutDirection.Rtl
 
       // Flow the rows vertically, much like Column.
       for (i in 0 until count) {
         val prefix = prefixPlaceables[i]
         val item = itemPlaceables[i]
         val rowHeight = max(prefix.height, item.height) + itemSpacing.roundToPx()
-        val size = IntSize(
-          width = widestPrefix.width - prefix.width,
-          height = rowHeight - prefix.height
-        )
-        val prefixOffset = Alignment.TopEnd.align(
-          size = size,
-          space = size,
-          layoutDirection = layoutDirection
-        )
-
-        prefix.placeRelative(prefixOffset.x, y + prefixOffset.y)
-        item.placeRelative(widestPrefix.width, y)
+        if (richTextRenderOptions.enableRtlCompatibility) {
+          if (markerOnRight) {
+            item.place(0, y)
+            prefix.place(widestItem.width + widestPrefix.width - prefix.width, y)
+          } else {
+            prefix.place(widestPrefix.width - prefix.width, y)
+            item.place(widestPrefix.width, y)
+          }
+        } else {
+          val size = IntSize(
+            width = widestPrefix.width - prefix.width,
+            height = rowHeight - prefix.height
+          )
+          val prefixOffset = Alignment.TopEnd.align(
+            size = size,
+            space = size,
+            layoutDirection = layoutDirection
+          )
+          prefix.placeRelative(prefixOffset.x, y + prefixOffset.y)
+          item.placeRelative(widestPrefix.width, y)
+        }
         y += rowHeight
       }
     }

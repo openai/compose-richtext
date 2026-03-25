@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.halilibo.richtext.markdown.node.AstDocument
 import com.halilibo.richtext.markdown.node.AstBlockQuote
 import com.halilibo.richtext.markdown.node.AstCode
 import com.halilibo.richtext.markdown.node.AstEmphasis
@@ -34,6 +35,7 @@ import com.halilibo.richtext.ui.string.RichTextDecorations
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
 import com.halilibo.richtext.ui.string.RichTextString
 import com.halilibo.richtext.ui.string.Text
+import com.halilibo.richtext.ui.string.applyRtlCompatibility
 import com.halilibo.richtext.ui.string.withFormat
 
 /**
@@ -75,7 +77,17 @@ internal fun RichTextScope.MarkdownRichText(
 
   Text(
     text = richText,
-    modifier = modifier,
+    modifier = if (
+      astNode.links.parent?.type.let { parentType ->
+        parentType is AstDocument ||
+          parentType is AstBlockQuote ||
+          parentType is AstListItem
+      }
+    ) {
+      modifier.applyRtlCompatibility(richTextRenderOptions)
+    } else {
+      modifier
+    },
     isLeafText = astNode.isLastInTree(),
     renderOptions = richTextRenderOptions,
     sharedAnimationState = markdownAnimationState,

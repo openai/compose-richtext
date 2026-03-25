@@ -1,11 +1,17 @@
 package com.halilibo.richtext.markdown
 
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.LayoutDirection
 import com.halilibo.richtext.markdown.node.AstBlockNodeType
 import com.halilibo.richtext.markdown.node.AstBlockQuote
 import com.halilibo.richtext.markdown.node.AstDocument
@@ -30,11 +36,13 @@ import com.halilibo.richtext.markdown.node.AstUnorderedList
 import com.halilibo.richtext.ui.BlockQuote
 import com.halilibo.richtext.ui.CodeBlock
 import com.halilibo.richtext.ui.FormattedList
+import com.halilibo.richtext.ui.BasicRichText
 import com.halilibo.richtext.ui.Heading
 import com.halilibo.richtext.ui.HorizontalRule
 import com.halilibo.richtext.ui.ListType.Ordered
 import com.halilibo.richtext.ui.ListType.Unordered
 import com.halilibo.richtext.ui.RichTextScope
+import com.halilibo.richtext.ui.string.applyRtlCompatibility
 import com.halilibo.richtext.ui.string.InlineContent
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
 import com.halilibo.richtext.ui.string.RichTextDecorations
@@ -239,22 +247,53 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
     visitChildren: @Composable (AstNode) -> Unit
   ) {
     when (val astNodeType = astNode.type) {
-      is AstDocument -> visitChildren(astNode)
+      is AstDocument -> {
+        if (richTextRenderOptions.enableRtlCompatibility) {
+          val documentDirection = remember(astNode) {
+            astNode.firstStrongTextDirectionInSubtree()
+          }
+          CompositionLocalProvider(
+            LocalLayoutDirection provides resolveDocumentLayoutDirection(
+              documentDirection,
+              LocalLayoutDirection.current,
+            ),
+          ) {
+            BasicRichText(modifier = Modifier.width(IntrinsicSize.Max)) {
+              visitChildren(astNode)
+            }
+          }
+        } else {
+          visitChildren(astNode)
+        }
+      }
       is AstBlockQuote -> {
         BlockQuote(
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
+          gutterDirection = if (richTextRenderOptions.enableRtlCompatibility) {
+            astNode.firstStrongTextDirectionInFirstLine()
+          } else {
+            null
+          },
         ) {
           visitChildren(astNode)
         }
       }
 
       is AstUnorderedList -> {
+        val markerDirection = if (richTextRenderOptions.enableRtlCompatibility) {
+          astNode.filterChildrenType<AstListItem>()
+            .firstOrNull()
+            ?.firstStrongTextDirectionInSubtree()
+        } else {
+          null
+        }
         FormattedList(
           listType = Unordered,
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
-          items = astNode.filterChildrenType<AstListItem>().toList()
+          items = astNode.filterChildrenType<AstListItem>().toList(),
+          markerDirection = markerDirection,
         ) { astListItem ->
           // if this list item has no child, it should at least emit a single pixel layout.
           if (astListItem.links.firstChild == null) {
@@ -266,12 +305,20 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
       }
 
       is AstOrderedList -> {
+        val markerDirection = if (richTextRenderOptions.enableRtlCompatibility) {
+          astNode.childrenSequence()
+            .firstOrNull()
+            ?.firstStrongTextDirectionInSubtree()
+        } else {
+          null
+        }
         FormattedList(
           listType = Ordered,
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
           items = astNode.childrenSequence().toList(),
           startIndex = astNodeType.startNumber - 1,
+          markerDirection = markerDirection,
         ) { astListItem ->
           // if this list item has no child, it should at least emit a single pixel layout.
           if (astListItem.links.firstChild == null) {
@@ -377,6 +424,15 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
       }
     }.let {}
   }
+}
+
+private fun resolveDocumentLayoutDirection(
+  contentDirection: androidx.compose.ui.text.style.TextDirection?,
+  systemDirection: LayoutDirection,
+): LayoutDirection = when (contentDirection) {
+  androidx.compose.ui.text.style.TextDirection.Ltr -> LayoutDirection.Ltr
+  androidx.compose.ui.text.style.TextDirection.Rtl -> LayoutDirection.Rtl
+  else -> systemDirection
 }
 
 /**
