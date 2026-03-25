@@ -341,9 +341,14 @@ private val LocalListLevel = compositionLocalOf { 0 }
     val widestPrefix = prefixPlaceables.maxByOrNull { it.width }!!
 
     // Then measure the items, offset to the right to allow space for the prefixes and gap.
-    val itemConstraints = constraints.copy(
-      maxWidth = (constraints.maxWidth - widestPrefix.width).coerceAtLeast(0)
-    )
+    val itemConstraints =
+      if (constraints.maxWidth == Constraints.Infinity) {
+        constraints
+      } else {
+        constraints.copy(
+          maxWidth = (constraints.maxWidth - widestPrefix.width).coerceAtLeast(0),
+        )
+      }
     val itemPlaceables = itemMeasurables.map { item ->
       item.measure(itemConstraints)
     }
@@ -351,7 +356,11 @@ private val LocalListLevel = compositionLocalOf { 0 }
     val widestItem = itemPlaceables.maxByOrNull { it.width }!!
 
     val listWidth =
-      if (richTextRenderOptions.enableRtlCompatibility && constraints.hasBoundedWidth) {
+      if (
+        richTextRenderOptions.enableRtlCompatibility &&
+        constraints.hasBoundedWidth &&
+        constraints.maxWidth != Constraints.Infinity
+      ) {
         constraints.maxWidth
       } else {
         widestPrefix.width + widestItem.width
