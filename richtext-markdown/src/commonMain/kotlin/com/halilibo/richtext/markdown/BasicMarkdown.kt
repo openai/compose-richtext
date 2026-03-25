@@ -1,12 +1,17 @@
 package com.halilibo.richtext.markdown
 
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.LayoutDirection
 import com.halilibo.richtext.markdown.node.AstBlockNodeType
 import com.halilibo.richtext.markdown.node.AstBlockQuote
 import com.halilibo.richtext.markdown.node.AstDocument
@@ -31,6 +36,7 @@ import com.halilibo.richtext.markdown.node.AstUnorderedList
 import com.halilibo.richtext.ui.BlockQuote
 import com.halilibo.richtext.ui.CodeBlock
 import com.halilibo.richtext.ui.FormattedList
+import com.halilibo.richtext.ui.BasicRichText
 import com.halilibo.richtext.ui.Heading
 import com.halilibo.richtext.ui.HorizontalRule
 import com.halilibo.richtext.ui.ListType.Ordered
@@ -241,7 +247,25 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
     visitChildren: @Composable (AstNode) -> Unit
   ) {
     when (val astNodeType = astNode.type) {
-      is AstDocument -> visitChildren(astNode)
+      is AstDocument -> {
+        if (richTextRenderOptions.enableRtlCompatibility) {
+          val documentDirection = remember(astNode) {
+            astNode.firstStrongTextDirectionInSubtree()
+          }
+          CompositionLocalProvider(
+            LocalLayoutDirection provides resolveDocumentLayoutDirection(
+              documentDirection,
+              LocalLayoutDirection.current,
+            ),
+          ) {
+            BasicRichText(modifier = Modifier.width(IntrinsicSize.Max)) {
+              visitChildren(astNode)
+            }
+          }
+        } else {
+          visitChildren(astNode)
+        }
+      }
       is AstBlockQuote -> {
         BlockQuote(
           markdownAnimationState = markdownAnimationState,
@@ -400,6 +424,15 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
       }
     }.let {}
   }
+}
+
+private fun resolveDocumentLayoutDirection(
+  contentDirection: androidx.compose.ui.text.style.TextDirection?,
+  systemDirection: LayoutDirection,
+): LayoutDirection = when (contentDirection) {
+  androidx.compose.ui.text.style.TextDirection.Ltr -> LayoutDirection.Ltr
+  androidx.compose.ui.text.style.TextDirection.Rtl -> LayoutDirection.Rtl
+  else -> systemDirection
 }
 
 /**

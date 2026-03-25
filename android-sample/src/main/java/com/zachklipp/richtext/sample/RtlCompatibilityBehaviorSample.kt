@@ -77,6 +77,23 @@ private fun CodeWidthBehaviorPreview() {
   }
 }
 
+@Preview(name = "RTL document width behavior · he-IL", locale = "he-rIL", widthDp = 412, showBackground = true)
+@Composable
+private fun DocumentWidthBehaviorPreview() {
+  BehaviorPreviewSurface {
+    BehaviorPreviewColumn {
+      BehaviorSection(
+        title = "English document keeps list aligned to surrounding paragraphs",
+        markdown = englishDocumentWithOrderedListMarkdown,
+      )
+      BehaviorSection(
+        title = "Hebrew document keeps list aligned to surrounding paragraphs",
+        markdown = hebrewDocumentWithOrderedListMarkdown,
+      )
+    }
+  }
+}
+
 @Composable
 private fun BehaviorPreviewSurface(
   content: @Composable () -> Unit,
@@ -208,4 +225,28 @@ private val symbolsCodeMarkdown = """
   ```
   () [] {} <> / == -> ++
   ```
+""".trimIndent()
+
+private val englishDocumentWithOrderedListMarkdown = """
+  The Emoji 15.1 update introduced 118 new emojis, including six completely new concepts:
+
+  1. Phoenix
+  2. Lime
+  3. Brown Mushroom
+  4. Broken Chain
+  5. Head Shaking Horizontally
+
+  For more detailed information on the new emojis and their meanings, you can visit Emojipedia or other emoji-related resources.
+""".trimIndent()
+
+private val hebrewDocumentWithOrderedListMarkdown = """
+  עדכון Emoji 15.1 הציג 118 אימוג׳ים חדשים, כולל שישה רעיונות חדשים לגמרי:
+
+  1. Phoenix
+  2. Lime
+  3. Brown Mushroom
+  4. Broken Chain
+  5. Head Shaking Horizontally
+
+  למידע מפורט יותר על האימוג׳ים החדשים והמשמעויות שלהם אפשר לעיין ב-Emojipedia או במקורות נוספים.
 """.trimIndent()

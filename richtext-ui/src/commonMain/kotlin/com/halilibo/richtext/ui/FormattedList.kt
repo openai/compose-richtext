@@ -275,7 +275,16 @@ private val LocalListLevel = compositionLocalOf { 0 }
       val alpha = rememberMarkdownFade(richTextRenderOptions, markdownAnimationState)
       Box(modifier = Modifier.graphicsLayer { this.alpha = alpha.value }) {
         when (listType) {
-          Ordered -> listStyle.orderedMarkers!!().drawMarker(currentLevel, startIndex + index)
+          Ordered -> {
+            val markerTextStyle = if (richTextRenderOptions.enableRtlCompatibility) {
+              currentTextStyle.copy(textDirection = TextDirection.ContentOrLtr)
+            } else {
+              currentTextStyle
+            }
+            CompositionLocalProvider(LocalInternalTextStyle provides markerTextStyle) {
+              listStyle.orderedMarkers!!().drawMarker(currentLevel, startIndex + index)
+            }
+          }
           Unordered -> listStyle.unorderedMarkers!!().drawMarker(currentLevel)
         }
       }
@@ -341,7 +350,12 @@ private val LocalListLevel = compositionLocalOf { 0 }
       .toList()
     val widestItem = itemPlaceables.maxByOrNull { it.width }!!
 
-    val listWidth = widestPrefix.width + widestItem.width
+    val listWidth =
+      if (richTextRenderOptions.enableRtlCompatibility && constraints.hasBoundedWidth) {
+        constraints.maxWidth
+      } else {
+        widestPrefix.width + widestItem.width
+      }
     val itemsHeight = itemPlaceables.sumOf { it.height } +
         (itemPlaceables.size - 1) * itemSpacing.roundToPx()
     val prefixesHeight = prefixPlaceables.sumOf { it.height } +
