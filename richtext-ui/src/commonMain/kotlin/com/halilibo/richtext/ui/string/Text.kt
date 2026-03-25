@@ -28,9 +28,12 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.ParagraphStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
@@ -65,6 +68,7 @@ public fun RichTextScope.Text(
   decorations: RichTextDecorations = RichTextDecorations(),
   overflow: TextOverflow = TextOverflow.Clip,
   maxLines: Int = Int.MAX_VALUE,
+  textDirection: TextDirection? = null,
 ) {
   val style = currentRichTextStyle.stringStyle
   val contentColor = currentContentColor
@@ -142,6 +146,12 @@ public fun RichTextScope.Text(
     null
   }
   val animatedText = animatedResult?.text ?: decoratedTextResult.annotatedString
+  val paragraphStyledText = remember(animatedText, textDirection) {
+    applyParagraphStyle(
+      text = animatedText,
+      textDirection = textDirection,
+    )
+  }
   val underlineAlphaForOffset = animatedResult?.alphaForOffset
 
   val underlineModifier = if (underlineSpecs.isNotEmpty()) {
@@ -165,7 +175,7 @@ public fun RichTextScope.Text(
 
   if (inlineContents.isEmpty()) {
     Text(
-      text = animatedText,
+      text = paragraphStyledText,
       onTextLayout = { layoutResult ->
         textLayoutResult = layoutResult
         onTextLayout(layoutResult)
@@ -183,7 +193,7 @@ public fun RichTextScope.Text(
     )
 
     Text(
-      text = animatedText,
+      text = paragraphStyledText,
       onTextLayout = { layoutResult ->
         textLayoutResult = layoutResult
         onTextLayout(layoutResult)
@@ -201,6 +211,34 @@ public fun RichTextScope.Text(
         }
       },
     )
+  }
+}
+
+internal fun applyParagraphStyle(
+  text: AnnotatedString,
+  textDirection: TextDirection?,
+): AnnotatedString {
+  if (textDirection == null) return text
+
+  val paragraphStyle = ParagraphStyle(
+    textAlign = when (textDirection) {
+      TextDirection.Rtl -> TextAlign.Right
+      TextDirection.Ltr -> TextAlign.Left
+      else -> TextAlign.Unspecified
+    },
+    textDirection = textDirection,
+  )
+
+  return buildAnnotatedString {
+    append(text)
+    addStyle(paragraphStyle, 0, text.length)
+    text.paragraphStyles.forEach { range ->
+      addStyle(
+        paragraphStyle.merge(range.item),
+        range.start,
+        range.end,
+      )
+    }
   }
 }
 

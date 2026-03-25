@@ -30,6 +30,7 @@ public fun RichTextScope.Markdown(
   markdownParseOptions: CommonMarkdownParseOptions = CommonMarkdownParseOptions.Default,
   richtextRenderOptions: RichTextRenderOptions = RichTextRenderOptions.Default,
   richTextDecorations: RichTextDecorations = RichTextDecorations(),
+  enableRtlCompatibility: Boolean = false,
   contentOverride: ContentOverride? = null,
   inlineContentOverride: InlineContentOverride? = null,
   astBlockNodeComposer: AstBlockNodeComposer? = null
@@ -53,6 +54,7 @@ public fun RichTextScope.Markdown(
       inlineContentOverride = inlineContentOverride,
       richTextRenderOptions = richtextRenderOptions,
       richTextDecorations = richTextDecorations,
+      enableRtlCompatibility = enableRtlCompatibility,
       astBlockNodeComposer = astBlockNodeComposer,
     )
   }
@@ -69,6 +71,7 @@ public fun RichTextScope.Markdown(
   content: Node,
   richtextRenderOptions: RichTextRenderOptions = RichTextRenderOptions.Default,
   richTextDecorations: RichTextDecorations = RichTextDecorations(),
+  enableRtlCompatibility: Boolean = false,
   contentOverride: ContentOverride? = null,
   inlineContentOverride: InlineContentOverride? = null,
   astBlockNodeComposer: AstBlockNodeComposer? = null
@@ -80,6 +83,7 @@ public fun RichTextScope.Markdown(
     inlineContentOverride,
     richtextRenderOptions,
     richTextDecorations,
+    enableRtlCompatibility,
     astBlockNodeComposer,
   )
 }
