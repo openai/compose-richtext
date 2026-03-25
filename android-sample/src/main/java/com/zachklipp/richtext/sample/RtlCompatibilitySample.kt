@@ -117,9 +117,7 @@ private fun MarkdownCaseContent(
     RichText(modifier = Modifier.fillMaxWidth()) {
       Markdown(
         content = markdown,
-        richtextRenderOptions = RichTextRenderOptions(
-          enableRtlCompatibility = true,
-        ),
+        richtextRenderOptions = RichTextRenderOptions(),
       )
     }
   }
