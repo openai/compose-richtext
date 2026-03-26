@@ -75,13 +75,17 @@ internal fun RichTextScope.MarkdownRichText(
   // Assume that only RichText nodes reside below this level.
   val enableCompatibilityDirection = richTextRenderOptions.enableRtlCompatibility &&
     (astNode.type is AstParagraph || astNode.type is AstHeading)
-  val (richText, textDirection) = remember(
+  val richText = remember(
     astNode,
     inlineContentOverride,
+  ) {
+    computeRichTextString(astNode, inlineContentOverride)
+  }
+  val textDirection = remember(
+    richText,
     enableCompatibilityDirection,
   ) {
-    val richText = computeRichTextString(astNode, inlineContentOverride)
-    richText to if (enableCompatibilityDirection) {
+    if (enableCompatibilityDirection) {
       richText.text.firstStrongTextDirection(stopAtLineBreak = true)
     } else {
       null

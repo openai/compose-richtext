@@ -270,77 +270,55 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
     visitChildren: @Composable (AstNode) -> Unit
   ) {
     val enableRtlCompatibility = richTextRenderOptions.enableRtlCompatibility
+    val compatibilityDirection = if (enableRtlCompatibility) {
+      remember(astNode) {
+        when (astNode.type) {
+          is AstBlockQuote,
+          is AstIndentedCodeBlock,
+          is AstFencedCodeBlock -> listOf(astNode)
+          is AstUnorderedList -> astNode.childrenSequence()
+            .firstOrNull { it.type is AstListItem }
+            ?.let(::listOf)
+            .orEmpty()
+          is AstOrderedList -> astNode.childrenSequence().take(1).toList()
+          else -> emptyList()
+        }.firstOrNull()?.firstStrongTextDirectionInFirstLine()
+      }
+    } else {
+      null
+    }
 
     when (val astNodeType = astNode.type) {
       is AstDocument -> visitChildren(astNode)
       is AstBlockQuote -> {
-        val gutterDirection = remember(astNode, enableRtlCompatibility) {
-          if (enableRtlCompatibility) {
-            astNode.firstStrongTextDirectionInFirstLine()
-          } else {
-            null
-          }
-        }
         BlockQuote(
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
-          gutterDirection = gutterDirection,
+          gutterDirection = compatibilityDirection,
         ) {
           visitChildren(astNode)
         }
       }
 
-      is AstUnorderedList -> {
-        val items = remember(astNode) {
-          astNode.childrenSequence().filter { it.type is AstListItem }.toList()
-        }
-        val markerDirection = remember(astNode, enableRtlCompatibility) {
-          if (enableRtlCompatibility) {
-            items.firstOrNull()?.firstStrongTextDirectionInFirstLine()
-          } else {
-            null
-          }
-        }
-        FormattedList(
-          listType = Unordered,
-          markdownAnimationState = markdownAnimationState,
-          richTextRenderOptions = richTextRenderOptions,
-          items = items,
-          markerDirection = markerDirection,
-        ) { astListItem ->
-          CompositionLocalProvider(
-            LocalCompatibilityTextAlignOverride provides markerDirection.toCompatibilityTextAlign(),
-          ) {
-            if (astListItem.links.firstChild == null) {
-              BasicText("")
-            } else {
-              visitChildren(astListItem)
-            }
-          }
-        }
-      }
-
+      is AstUnorderedList,
       is AstOrderedList -> {
         val items = remember(astNode) {
-          astNode.childrenSequence().toList()
-        }
-        val markerDirection = remember(astNode, enableRtlCompatibility) {
-          if (enableRtlCompatibility) {
-            items.firstOrNull()?.firstStrongTextDirectionInFirstLine()
-          } else {
-            null
+          when (astNodeType) {
+            is AstUnorderedList -> astNode.childrenSequence().filter { it.type is AstListItem }.toList()
+            is AstOrderedList -> astNode.childrenSequence().toList()
+            else -> emptyList()
           }
         }
         FormattedList(
-          listType = Ordered,
+          listType = if (astNodeType is AstOrderedList) Ordered else Unordered,
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
           items = items,
-          startIndex = astNodeType.startNumber - 1,
-          markerDirection = markerDirection,
+          startIndex = if (astNodeType is AstOrderedList) astNodeType.startNumber - 1 else 0,
+          markerDirection = compatibilityDirection,
         ) { astListItem ->
           CompositionLocalProvider(
-            LocalCompatibilityTextAlignOverride provides markerDirection.toCompatibilityTextAlign(),
+            LocalCompatibilityTextAlignOverride provides compatibilityDirection.toCompatibilityTextAlign(),
           ) {
             if (astListItem.links.firstChild == null) {
               BasicText("")
@@ -372,38 +350,24 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
       }
 
       is AstIndentedCodeBlock -> {
-        val textDirection = remember(astNode, enableRtlCompatibility) {
-          if (enableRtlCompatibility) {
-            astNode.firstStrongTextDirectionInFirstLine()
-          } else {
-            null
-          }
-        }
         CodeBlock(
           text = astNodeType.literal.trim(),
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
-          modifier = if (textDirection != null) Modifier.fillMaxWidth() else Modifier,
-          textDirection = textDirection,
-          textAlign = textDirection.toCompatibilityTextAlign(),
+          modifier = if (compatibilityDirection != null) Modifier.fillMaxWidth() else Modifier,
+          textDirection = compatibilityDirection,
+          textAlign = compatibilityDirection.toCompatibilityTextAlign(),
         )
       }
 
       is AstFencedCodeBlock -> {
-        val textDirection = remember(astNode, enableRtlCompatibility) {
-          if (enableRtlCompatibility) {
-            astNode.firstStrongTextDirectionInFirstLine()
-          } else {
-            null
-          }
-        }
         CodeBlock(
           text = astNodeType.literal.trim(),
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
-          modifier = if (textDirection != null) Modifier.fillMaxWidth() else Modifier,
-          textDirection = textDirection,
-          textAlign = textDirection.toCompatibilityTextAlign(),
+          modifier = if (compatibilityDirection != null) Modifier.fillMaxWidth() else Modifier,
+          textDirection = compatibilityDirection,
+          textAlign = compatibilityDirection.toCompatibilityTextAlign(),
         )
       }
 

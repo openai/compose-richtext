@@ -29,7 +29,6 @@ import com.halilibo.richtext.ui.ListType.Ordered
 import com.halilibo.richtext.ui.ListType.Unordered
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
-import com.halilibo.richtext.ui.string.resolveRtlCompatibleLayoutDirection
 import com.halilibo.richtext.ui.string.shouldFillWidthForRtlCompatibility
 import kotlin.math.max
 
@@ -342,9 +341,7 @@ private val LocalOrderedMarkerTextDirection = compositionLocalOf<TextDirection?>
     val listHeight = maxOf(itemsHeight, prefixesHeight)
     layout(listWidth, listHeight) {
       var y = 0
-      val markerOnRight = richTextRenderOptions.enableRtlCompatibility &&
-        resolveRtlCompatibleLayoutDirection(markerDirection, layoutDirection) ==
-        androidx.compose.ui.unit.LayoutDirection.Rtl
+      val markerOnRight = markerDirection == TextDirection.Rtl
 
       // Flow the rows vertically, much like Column.
       for (i in 0 until count) {
