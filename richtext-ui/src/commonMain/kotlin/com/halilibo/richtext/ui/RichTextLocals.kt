@@ -14,6 +14,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import com.halilibo.richtext.ui.util.detectTapGesturesIf
 
@@ -54,13 +56,19 @@ internal val RichTextScope.currentContentColor: Color
 internal fun RichTextScope.Text(
   text: String,
   modifier: Modifier = Modifier,
+  textAlign: TextAlign? = null,
+  textDirection: TextDirection? = null,
   onTextLayout: (TextLayoutResult) -> Unit = {},
   overflow: TextOverflow = TextOverflow.Clip,
   softWrap: Boolean = true,
   maxLines: Int = Int.MAX_VALUE
 ) {
   val textColor = currentTextStyle.color.takeOrElse { currentContentColor }
-  val style = currentTextStyle.copy(color = textColor)
+  val style = currentTextStyle.copy(
+    color = textColor,
+    textAlign = textAlign ?: currentTextStyle.textAlign,
+    textDirection = textDirection ?: currentTextStyle.textDirection,
+  )
 
   BasicText(
     text = text,

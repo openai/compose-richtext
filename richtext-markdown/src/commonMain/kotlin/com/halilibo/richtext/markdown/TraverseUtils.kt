@@ -1,31 +1,28 @@
 package com.halilibo.richtext.markdown
 
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import com.halilibo.richtext.markdown.node.AstCode
 import com.halilibo.richtext.markdown.node.AstHardLineBreak
+import com.halilibo.richtext.markdown.node.AstHtmlBlock
+import com.halilibo.richtext.markdown.node.AstHtmlInline
 import com.halilibo.richtext.markdown.node.AstImage
 import com.halilibo.richtext.markdown.node.AstNode
 import com.halilibo.richtext.markdown.node.AstNodeType
 import com.halilibo.richtext.markdown.node.AstSoftLineBreak
 import com.halilibo.richtext.markdown.node.AstText
+import kotlin.text.CharDirectionality
 
 internal fun AstNode.childrenSequence(
   reverse: Boolean = false
 ): Sequence<AstNode> {
   return if (!reverse) {
-    generateSequence(this.links.firstChild) { it.links.next }
+    generateSequence(links.firstChild) { it.links.next }
   } else {
-    generateSequence(this.links.lastChild) { it.links.previous }
+    generateSequence(links.lastChild) { it.links.previous }
   }
 }
 
-/**
- * Markdown rendering is susceptible to have assumptions. Hence, some rendering rules
- * may force restrictions on children. So, valid children nodes should be selected
- * before traversing. This function returns a LinkedList of children which conforms to
- * [filter] function.
- *
- * @param filter A lambda to select valid children.
- */
 internal fun AstNode.filterChildren(
   reverse: Boolean = false,
   filter: (AstNode) -> Boolean
@@ -33,17 +30,101 @@ internal fun AstNode.filterChildren(
   return childrenSequence(reverse).filter(filter)
 }
 
-internal inline fun <reified T : AstNodeType> AstNode.filterChildrenType(): Sequence<AstNode> {
-  return filterChildren { it.type is T }
-}
+internal inline fun <reified T : AstNodeType> AstNode.filterChildrenType(): Sequence<AstNode> =
+  filterChildren { it.type is T }
 
-/**
- * These ASTNode types should never have any children. If any exists, ignore them.
- */
 internal fun AstNode.isRichTextTerminal(): Boolean {
   return type is AstText
-          || type is AstCode
-          || type is AstImage
-          || type is AstSoftLineBreak
-          || type is AstHardLineBreak
+    || type is AstCode
+    || type is AstImage
+    || type is AstSoftLineBreak
+    || type is AstHardLineBreak
+}
+
+internal fun AstNode.firstStrongTextDirectionInSubtree(): TextDirection? {
+  when (val currentType = type) {
+    is AstText -> return firstStrongTextDirection(currentType.literal)
+    is AstCode -> return firstStrongTextDirection(currentType.literal)
+    is AstHtmlBlock -> return firstStrongTextDirection(currentType.literal.removeHtmlTags())
+    is AstHtmlInline -> return firstStrongTextDirection(currentType.literal.removeHtmlTags())
+    else -> Unit
+  }
+
+  childrenSequence().forEach { child ->
+    child.firstStrongTextDirectionInSubtree()?.let { return it }
+  }
+
+  return null
+}
+
+internal fun AstNode.firstStrongTextDirectionInFirstLine(): TextDirection? {
+  val builder = StringBuilder()
+  appendFirstLineText(builder)
+  return firstStrongTextDirection(builder)
+}
+
+internal fun String.firstStrongTextDirectionInFirstLine(): TextDirection? {
+  val firstLine = lineSequence().firstOrNull().orEmpty()
+  return firstStrongTextDirection(firstLine)
+}
+
+internal fun TextDirection?.toCompatibilityTextAlign(): TextAlign? = when (this) {
+  TextDirection.Ltr -> TextAlign.Left
+  TextDirection.Rtl -> TextAlign.Right
+  else -> null
+}
+
+private fun AstNode.appendFirstLineText(builder: StringBuilder): Boolean {
+  when (val currentType = type) {
+    is AstText -> builder.append(currentType.literal)
+    is AstCode -> builder.append(currentType.literal)
+    is AstHtmlBlock -> builder.append(currentType.literal.removeHtmlTags())
+    is AstHtmlInline -> builder.append(currentType.literal.removeHtmlTags())
+    is AstSoftLineBreak, is AstHardLineBreak -> return true
+    else -> Unit
+  }
+
+  childrenSequence().forEach { child ->
+    if (child.appendFirstLineText(builder)) {
+      return true
+    }
+  }
+
+  return false
+}
+
+private fun firstStrongTextDirection(text: CharSequence): TextDirection? {
+  for (char in text) {
+    when (char.directionality) {
+      CharDirectionality.LEFT_TO_RIGHT,
+      CharDirectionality.LEFT_TO_RIGHT_EMBEDDING,
+      CharDirectionality.LEFT_TO_RIGHT_OVERRIDE -> return TextDirection.Ltr
+
+      CharDirectionality.RIGHT_TO_LEFT,
+      CharDirectionality.RIGHT_TO_LEFT_ARABIC,
+      CharDirectionality.RIGHT_TO_LEFT_EMBEDDING,
+      CharDirectionality.RIGHT_TO_LEFT_OVERRIDE -> return TextDirection.Rtl
+
+      else -> Unit
+    }
+  }
+
+  return null
+}
+
+private fun String.removeHtmlTags(): String {
+  if ('<' !in this) return this
+
+  val builder = StringBuilder(length)
+  var insideTag = false
+  for (char in this) {
+    when (char) {
+      '<' -> insideTag = true
+      '>' -> insideTag = false
+      else -> if (!insideTag) {
+        builder.append(char)
+      }
+    }
+  }
+  return builder.toString()
 }
