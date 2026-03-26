@@ -11,7 +11,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.LayoutDirection
 import com.halilibo.richtext.markdown.node.AstBlockNodeType
 import com.halilibo.richtext.markdown.node.AstBlockQuote
@@ -246,57 +245,20 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
     markdownAnimationState: MarkdownAnimationState,
     visitChildren: @Composable (AstNode) -> Unit
   ) {
-    fun String.compatibilityDirection(): TextDirection? =
-      if (richTextRenderOptions.enableRtlCompatibility) {
-        firstStrongTextDirectionInFirstLine()
-      } else {
-        null
-      }
-
-    fun AstNode.compatibilityDirection(): TextDirection? =
-      if (richTextRenderOptions.enableRtlCompatibility) {
-        firstStrongTextDirectionInFirstLine()
-      } else {
-        null
-      }
-
-    @Composable
-    fun renderListItem(astListItem: AstNode, markerDirection: TextDirection?) {
-      CompositionLocalProvider(
-        LocalCompatibilityTextAlignOverride provides markerDirection.toCompatibilityTextAlign(),
-      ) {
-        if (astListItem.links.firstChild == null) {
-          BasicText("")
-        } else {
-          visitChildren(astListItem)
-        }
-      }
-    }
-
-    @Composable
-    fun renderCodeBlock(literal: String) {
-      val textDirection = literal.compatibilityDirection()
-      CodeBlock(
-        text = literal.trim(),
-        markdownAnimationState = markdownAnimationState,
-        richTextRenderOptions = richTextRenderOptions,
-        modifier = if (textDirection != null) Modifier.fillMaxWidth() else Modifier,
-        textDirection = textDirection,
-        textAlign = textDirection.toCompatibilityTextAlign(),
-      )
-    }
+    val enableRtlCompatibility = richTextRenderOptions.enableRtlCompatibility
 
     when (val astNodeType = astNode.type) {
       is AstDocument -> {
-        if (richTextRenderOptions.enableRtlCompatibility) {
+        if (enableRtlCompatibility) {
           val documentDirection = remember(astNode) {
             astNode.firstStrongTextDirectionInSubtree()
           }
           CompositionLocalProvider(
-            LocalLayoutDirection provides resolveDocumentLayoutDirection(
-              contentDirection = documentDirection,
-              systemDirection = LocalLayoutDirection.current,
-            ),
+            LocalLayoutDirection provides when (documentDirection) {
+              androidx.compose.ui.text.style.TextDirection.Ltr -> LayoutDirection.Ltr
+              androidx.compose.ui.text.style.TextDirection.Rtl -> LayoutDirection.Rtl
+              else -> LocalLayoutDirection.current
+            },
           ) {
             BasicRichText(modifier = Modifier.width(IntrinsicSize.Max)) {
               visitChildren(astNode)
@@ -310,40 +272,66 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
         BlockQuote(
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
-          gutterDirection = astNode.compatibilityDirection(),
+          gutterDirection = if (enableRtlCompatibility) {
+            astNode.firstStrongTextDirectionInFirstLine()
+          } else {
+            null
+          },
         ) {
           visitChildren(astNode)
         }
       }
 
       is AstUnorderedList -> {
-        val markerDirection = astNode.filterChildrenType<AstListItem>()
-          .firstOrNull()
-          ?.compatibilityDirection()
+        val items = astNode.childrenSequence().filter { it.type is AstListItem }.toList()
+        val markerDirection = if (enableRtlCompatibility) {
+          items.firstOrNull()?.firstStrongTextDirectionInFirstLine()
+        } else {
+          null
+        }
         FormattedList(
           listType = Unordered,
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
-          items = astNode.filterChildrenType<AstListItem>().toList(),
+          items = items,
           markerDirection = markerDirection,
         ) { astListItem ->
-          renderListItem(astListItem, markerDirection)
+          CompositionLocalProvider(
+            LocalCompatibilityTextAlignOverride provides markerDirection.toCompatibilityTextAlign(),
+          ) {
+            if (astListItem.links.firstChild == null) {
+              BasicText("")
+            } else {
+              visitChildren(astListItem)
+            }
+          }
         }
       }
 
       is AstOrderedList -> {
-        val markerDirection = astNode.childrenSequence()
-          .firstOrNull()
-          ?.compatibilityDirection()
+        val items = astNode.childrenSequence().toList()
+        val markerDirection = if (enableRtlCompatibility) {
+          items.firstOrNull()?.firstStrongTextDirectionInFirstLine()
+        } else {
+          null
+        }
         FormattedList(
           listType = Ordered,
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
-          items = astNode.childrenSequence().toList(),
+          items = items,
           startIndex = astNodeType.startNumber - 1,
           markerDirection = markerDirection,
         ) { astListItem ->
-          renderListItem(astListItem, markerDirection)
+          CompositionLocalProvider(
+            LocalCompatibilityTextAlignOverride provides markerDirection.toCompatibilityTextAlign(),
+          ) {
+            if (astListItem.links.firstChild == null) {
+              BasicText("")
+            } else {
+              visitChildren(astListItem)
+            }
+          }
         }
       }
 
@@ -368,11 +356,35 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
       }
 
       is AstIndentedCodeBlock -> {
-        renderCodeBlock(astNodeType.literal)
+        val textDirection = if (enableRtlCompatibility) {
+          astNodeType.literal.firstStrongTextDirectionInFirstLine()
+        } else {
+          null
+        }
+        CodeBlock(
+          text = astNodeType.literal.trim(),
+          markdownAnimationState = markdownAnimationState,
+          richTextRenderOptions = richTextRenderOptions,
+          modifier = if (textDirection != null) Modifier.fillMaxWidth() else Modifier,
+          textDirection = textDirection,
+          textAlign = textDirection.toCompatibilityTextAlign(),
+        )
       }
 
       is AstFencedCodeBlock -> {
-        renderCodeBlock(astNodeType.literal)
+        val textDirection = if (enableRtlCompatibility) {
+          astNodeType.literal.firstStrongTextDirectionInFirstLine()
+        } else {
+          null
+        }
+        CodeBlock(
+          text = astNodeType.literal.trim(),
+          markdownAnimationState = markdownAnimationState,
+          richTextRenderOptions = richTextRenderOptions,
+          modifier = if (textDirection != null) Modifier.fillMaxWidth() else Modifier,
+          textDirection = textDirection,
+          textAlign = textDirection.toCompatibilityTextAlign(),
+        )
       }
 
       is AstHtmlBlock -> {
@@ -434,15 +446,6 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
       }
     }.let {}
   }
-}
-
-private fun resolveDocumentLayoutDirection(
-  contentDirection: TextDirection?,
-  systemDirection: LayoutDirection,
-): LayoutDirection = when (contentDirection) {
-  TextDirection.Ltr -> LayoutDirection.Ltr
-  TextDirection.Rtl -> LayoutDirection.Rtl
-  else -> systemDirection
 }
 
 /**

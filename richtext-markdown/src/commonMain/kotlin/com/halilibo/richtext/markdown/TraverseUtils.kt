@@ -17,12 +17,20 @@ internal fun AstNode.childrenSequence(
   reverse: Boolean = false
 ): Sequence<AstNode> {
   return if (!reverse) {
-    generateSequence(links.firstChild) { it.links.next }
+    generateSequence(this.links.firstChild) { it.links.next }
   } else {
-    generateSequence(links.lastChild) { it.links.previous }
+    generateSequence(this.links.lastChild) { it.links.previous }
   }
 }
 
+/**
+ * Markdown rendering is susceptible to have assumptions. Hence, some rendering rules
+ * may force restrictions on children. So, valid children nodes should be selected
+ * before traversing. This function returns a LinkedList of children which conforms to
+ * [filter] function.
+ *
+ * @param filter A lambda to select valid children.
+ */
 internal fun AstNode.filterChildren(
   reverse: Boolean = false,
   filter: (AstNode) -> Boolean
@@ -30,9 +38,13 @@ internal fun AstNode.filterChildren(
   return childrenSequence(reverse).filter(filter)
 }
 
-internal inline fun <reified T : AstNodeType> AstNode.filterChildrenType(): Sequence<AstNode> =
-  filterChildren { it.type is T }
+internal inline fun <reified T : AstNodeType> AstNode.filterChildrenType(): Sequence<AstNode> {
+  return filterChildren { it.type is T }
+}
 
+/**
+ * These ASTNode types should never have any children. If any exists, ignore them.
+ */
 internal fun AstNode.isRichTextTerminal(): Boolean {
   return type is AstText
     || type is AstCode
@@ -43,29 +55,60 @@ internal fun AstNode.isRichTextTerminal(): Boolean {
 
 internal fun AstNode.firstStrongTextDirectionInSubtree(): TextDirection? {
   when (val currentType = type) {
-    is AstText -> return firstStrongTextDirection(currentType.literal)
-    is AstCode -> return firstStrongTextDirection(currentType.literal)
-    is AstHtmlBlock -> return firstStrongTextDirection(currentType.literal.removeHtmlTags())
-    is AstHtmlInline -> return firstStrongTextDirection(currentType.literal.removeHtmlTags())
+    is AstText -> return currentType.literal.firstStrongTextDirection()
+    is AstCode -> return currentType.literal.firstStrongTextDirection()
+    is AstHtmlBlock -> return currentType.literal.firstStrongTextDirection(ignoreHtmlTags = true)
+    is AstHtmlInline -> return currentType.literal.firstStrongTextDirection(ignoreHtmlTags = true)
     else -> Unit
   }
 
-  childrenSequence().forEach { child ->
-    child.firstStrongTextDirectionInSubtree()?.let { return it }
+  return childrenSequence().firstNotNullOfOrNull { child ->
+    child.firstStrongTextDirectionInSubtree()
   }
-
-  return null
 }
 
 internal fun AstNode.firstStrongTextDirectionInFirstLine(): TextDirection? {
-  val builder = StringBuilder()
-  appendFirstLineText(builder)
-  return firstStrongTextDirection(builder)
+  var lineEnded = false
+
+  fun AstNode.findFirstStrongTextDirection(): TextDirection? {
+    if (lineEnded) return null
+
+    when (val currentType = type) {
+      is AstText -> return currentType.literal.firstStrongTextDirection(
+        stopAtLineBreak = true,
+        onLineBreak = { lineEnded = true },
+      )
+      is AstCode -> return currentType.literal.firstStrongTextDirection(
+        stopAtLineBreak = true,
+        onLineBreak = { lineEnded = true },
+      )
+      is AstHtmlBlock -> return currentType.literal.firstStrongTextDirection(
+        stopAtLineBreak = true,
+        ignoreHtmlTags = true,
+        onLineBreak = { lineEnded = true },
+      )
+      is AstHtmlInline -> return currentType.literal.firstStrongTextDirection(
+        stopAtLineBreak = true,
+        ignoreHtmlTags = true,
+        onLineBreak = { lineEnded = true },
+      )
+      is AstSoftLineBreak, is AstHardLineBreak -> {
+        lineEnded = true
+        return null
+      }
+      else -> Unit
+    }
+
+    return childrenSequence().firstNotNullOfOrNull { child ->
+      child.findFirstStrongTextDirection()
+    }
+  }
+
+  return findFirstStrongTextDirection()
 }
 
 internal fun String.firstStrongTextDirectionInFirstLine(): TextDirection? {
-  val firstLine = lineSequence().firstOrNull().orEmpty()
-  return firstStrongTextDirection(firstLine)
+  return firstStrongTextDirection(stopAtLineBreak = true)
 }
 
 internal fun TextDirection?.toCompatibilityTextAlign(): TextAlign? = when (this) {
@@ -74,57 +117,36 @@ internal fun TextDirection?.toCompatibilityTextAlign(): TextAlign? = when (this)
   else -> null
 }
 
-private fun AstNode.appendFirstLineText(builder: StringBuilder): Boolean {
-  when (val currentType = type) {
-    is AstText -> builder.append(currentType.literal)
-    is AstCode -> builder.append(currentType.literal)
-    is AstHtmlBlock -> builder.append(currentType.literal.removeHtmlTags())
-    is AstHtmlInline -> builder.append(currentType.literal.removeHtmlTags())
-    is AstSoftLineBreak, is AstHardLineBreak -> return true
-    else -> Unit
-  }
-
-  childrenSequence().forEach { child ->
-    if (child.appendFirstLineText(builder)) {
-      return true
+private fun CharSequence.firstStrongTextDirection(
+  stopAtLineBreak: Boolean = false,
+  ignoreHtmlTags: Boolean = false,
+  onLineBreak: () -> Unit = {},
+): TextDirection? {
+  var insideHtmlTag = false
+  for (char in this) {
+    if (stopAtLineBreak && (char == '\n' || char == '\r')) {
+      onLineBreak()
+      return null
     }
-  }
 
-  return false
-}
+    when {
+      ignoreHtmlTags && char == '<' -> insideHtmlTag = true
+      ignoreHtmlTags && insideHtmlTag && char == '>' -> insideHtmlTag = false
+      ignoreHtmlTags && insideHtmlTag -> Unit
+      else -> when (char.directionality) {
+        CharDirectionality.LEFT_TO_RIGHT,
+        CharDirectionality.LEFT_TO_RIGHT_EMBEDDING,
+        CharDirectionality.LEFT_TO_RIGHT_OVERRIDE -> return TextDirection.Ltr
 
-private fun firstStrongTextDirection(text: CharSequence): TextDirection? {
-  for (char in text) {
-    when (char.directionality) {
-      CharDirectionality.LEFT_TO_RIGHT,
-      CharDirectionality.LEFT_TO_RIGHT_EMBEDDING,
-      CharDirectionality.LEFT_TO_RIGHT_OVERRIDE -> return TextDirection.Ltr
+        CharDirectionality.RIGHT_TO_LEFT,
+        CharDirectionality.RIGHT_TO_LEFT_ARABIC,
+        CharDirectionality.RIGHT_TO_LEFT_EMBEDDING,
+        CharDirectionality.RIGHT_TO_LEFT_OVERRIDE -> return TextDirection.Rtl
 
-      CharDirectionality.RIGHT_TO_LEFT,
-      CharDirectionality.RIGHT_TO_LEFT_ARABIC,
-      CharDirectionality.RIGHT_TO_LEFT_EMBEDDING,
-      CharDirectionality.RIGHT_TO_LEFT_OVERRIDE -> return TextDirection.Rtl
-
-      else -> Unit
+        else -> Unit
+      }
     }
   }
 
   return null
-}
-
-private fun String.removeHtmlTags(): String {
-  if ('<' !in this) return this
-
-  val builder = StringBuilder(length)
-  var insideTag = false
-  for (char in this) {
-    when (char) {
-      '<' -> insideTag = true
-      '>' -> insideTag = false
-      else -> if (!insideTag) {
-        builder.append(char)
-      }
-    }
-  }
-  return builder.toString()
 }
