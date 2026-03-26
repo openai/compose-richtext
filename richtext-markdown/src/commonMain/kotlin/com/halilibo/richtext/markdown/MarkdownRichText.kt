@@ -81,15 +81,12 @@ internal fun RichTextScope.MarkdownRichText(
   ) {
     computeRichTextString(astNode, inlineContentOverride)
   }
-  val textDirection = remember(
-    richText,
-    enableCompatibilityDirection,
-  ) {
-    if (enableCompatibilityDirection) {
+  val textDirection = if (enableCompatibilityDirection) {
+    remember(richText) {
       richText.text.firstStrongTextDirection(stopAtLineBreak = true)
-    } else {
-      null
     }
+  } else {
+    null
   }
   val textAlign = LocalCompatibilityTextAlignOverride.current
     ?: textDirection.toCompatibilityTextAlign()
