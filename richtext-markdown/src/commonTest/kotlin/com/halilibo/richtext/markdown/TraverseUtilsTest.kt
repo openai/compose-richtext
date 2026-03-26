@@ -15,9 +15,9 @@ class TraverseUtilsTest {
 
   @Test
   fun firstStrongDirectionInFirstLineSkipsNeutralPrefix() {
-    assertEquals(TextDirection.Rtl, "...שלום".firstStrongTextDirectionInFirstLine())
-    assertEquals(TextDirection.Ltr, "...hello".firstStrongTextDirectionInFirstLine())
-    assertNull("...123".firstStrongTextDirectionInFirstLine())
+    assertEquals(TextDirection.Rtl, "...שלום".firstStrongTextDirection(stopAtLineBreak = true))
+    assertEquals(TextDirection.Ltr, "...hello".firstStrongTextDirection(stopAtLineBreak = true))
+    assertNull("...123".firstStrongTextDirection(stopAtLineBreak = true))
   }
 
   @Test
@@ -47,7 +47,7 @@ class TraverseUtilsTest {
       שלום
     """.trimIndent()
 
-    assertEquals(TextDirection.Ltr, code.firstStrongTextDirectionInFirstLine())
+    assertEquals(TextDirection.Ltr, code.firstStrongTextDirection(stopAtLineBreak = true))
   }
 
   @Test

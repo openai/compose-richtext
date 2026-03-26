@@ -91,15 +91,39 @@ public fun RichTextScope.BasicMarkdown(
   richTextDecorations: RichTextDecorations = RichTextDecorations(),
   astBlockNodeComposer: AstBlockNodeComposer? = null,
 ) {
-  RecursiveRenderMarkdownAst(
-    astNode = astNode,
-    contentOverride = contentOverride,
-    inlineContentOverride = inlineContentOverride,
-    richTextRenderOptions = richTextRenderOptions,
-    richTextDecorations = richTextDecorations,
-    markdownAnimationState = remember { MarkdownAnimationState() },
-    astNodeComposer = astBlockNodeComposer,
-  )
+  val markdownAnimationState = remember { MarkdownAnimationState() }
+
+  @Composable
+  fun renderMarkdown() {
+    RecursiveRenderMarkdownAst(
+      astNode = astNode,
+      contentOverride = contentOverride,
+      inlineContentOverride = inlineContentOverride,
+      richTextRenderOptions = richTextRenderOptions,
+      richTextDecorations = richTextDecorations,
+      markdownAnimationState = markdownAnimationState,
+      astNodeComposer = astBlockNodeComposer,
+    )
+  }
+
+  if (richTextRenderOptions.enableRtlCompatibility && astNode.type is AstDocument) {
+    val documentDirection = remember(astNode) {
+      astNode.firstStrongTextDirectionInSubtree()
+    }
+    CompositionLocalProvider(
+      LocalLayoutDirection provides when (documentDirection) {
+        androidx.compose.ui.text.style.TextDirection.Ltr -> LayoutDirection.Ltr
+        androidx.compose.ui.text.style.TextDirection.Rtl -> LayoutDirection.Rtl
+        else -> LocalLayoutDirection.current
+      },
+    ) {
+      BasicRichText(modifier = Modifier.width(IntrinsicSize.Max)) {
+        renderMarkdown()
+      }
+    }
+  } else {
+    renderMarkdown()
+  }
 }
 
 /**
@@ -248,46 +272,34 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
     val enableRtlCompatibility = richTextRenderOptions.enableRtlCompatibility
 
     when (val astNodeType = astNode.type) {
-      is AstDocument -> {
-        if (enableRtlCompatibility) {
-          val documentDirection = remember(astNode) {
-            astNode.firstStrongTextDirectionInSubtree()
-          }
-          CompositionLocalProvider(
-            LocalLayoutDirection provides when (documentDirection) {
-              androidx.compose.ui.text.style.TextDirection.Ltr -> LayoutDirection.Ltr
-              androidx.compose.ui.text.style.TextDirection.Rtl -> LayoutDirection.Rtl
-              else -> LocalLayoutDirection.current
-            },
-          ) {
-            BasicRichText(modifier = Modifier.width(IntrinsicSize.Max)) {
-              visitChildren(astNode)
-            }
-          }
-        } else {
-          visitChildren(astNode)
-        }
-      }
+      is AstDocument -> visitChildren(astNode)
       is AstBlockQuote -> {
-        BlockQuote(
-          markdownAnimationState = markdownAnimationState,
-          richTextRenderOptions = richTextRenderOptions,
-          gutterDirection = if (enableRtlCompatibility) {
+        val gutterDirection = remember(astNode, enableRtlCompatibility) {
+          if (enableRtlCompatibility) {
             astNode.firstStrongTextDirectionInFirstLine()
           } else {
             null
-          },
+          }
+        }
+        BlockQuote(
+          markdownAnimationState = markdownAnimationState,
+          richTextRenderOptions = richTextRenderOptions,
+          gutterDirection = gutterDirection,
         ) {
           visitChildren(astNode)
         }
       }
 
       is AstUnorderedList -> {
-        val items = astNode.childrenSequence().filter { it.type is AstListItem }.toList()
-        val markerDirection = if (enableRtlCompatibility) {
-          items.firstOrNull()?.firstStrongTextDirectionInFirstLine()
-        } else {
-          null
+        val items = remember(astNode) {
+          astNode.childrenSequence().filter { it.type is AstListItem }.toList()
+        }
+        val markerDirection = remember(astNode, enableRtlCompatibility) {
+          if (enableRtlCompatibility) {
+            items.firstOrNull()?.firstStrongTextDirectionInFirstLine()
+          } else {
+            null
+          }
         }
         FormattedList(
           listType = Unordered,
@@ -309,11 +321,15 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
       }
 
       is AstOrderedList -> {
-        val items = astNode.childrenSequence().toList()
-        val markerDirection = if (enableRtlCompatibility) {
-          items.firstOrNull()?.firstStrongTextDirectionInFirstLine()
-        } else {
-          null
+        val items = remember(astNode) {
+          astNode.childrenSequence().toList()
+        }
+        val markerDirection = remember(astNode, enableRtlCompatibility) {
+          if (enableRtlCompatibility) {
+            items.firstOrNull()?.firstStrongTextDirectionInFirstLine()
+          } else {
+            null
+          }
         }
         FormattedList(
           listType = Ordered,
@@ -356,10 +372,12 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
       }
 
       is AstIndentedCodeBlock -> {
-        val textDirection = if (enableRtlCompatibility) {
-          astNodeType.literal.firstStrongTextDirectionInFirstLine()
-        } else {
-          null
+        val textDirection = remember(astNode, enableRtlCompatibility) {
+          if (enableRtlCompatibility) {
+            astNode.firstStrongTextDirectionInFirstLine()
+          } else {
+            null
+          }
         }
         CodeBlock(
           text = astNodeType.literal.trim(),
@@ -372,10 +390,12 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
       }
 
       is AstFencedCodeBlock -> {
-        val textDirection = if (enableRtlCompatibility) {
-          astNodeType.literal.firstStrongTextDirectionInFirstLine()
-        } else {
-          null
+        val textDirection = remember(astNode, enableRtlCompatibility) {
+          if (enableRtlCompatibility) {
+            astNode.firstStrongTextDirectionInFirstLine()
+          } else {
+            null
+          }
         }
         CodeBlock(
           text = astNodeType.literal.trim(),

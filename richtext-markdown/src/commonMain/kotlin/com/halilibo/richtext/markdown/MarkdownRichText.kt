@@ -82,7 +82,7 @@ internal fun RichTextScope.MarkdownRichText(
   ) {
     val richText = computeRichTextString(astNode, inlineContentOverride)
     richText to if (enableCompatibilityDirection) {
-      richText.text.firstStrongTextDirectionInFirstLine()
+      richText.text.firstStrongTextDirection(stopAtLineBreak = true)
     } else {
       null
     }
