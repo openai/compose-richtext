@@ -15,8 +15,23 @@ import com.halilibo.richtext.markdown.node.AstSoftLineBreak
 import com.halilibo.richtext.markdown.node.AstText
 import kotlin.text.CharDirectionality
 
+/**
+ * Lets list and quote containers override paragraph alignment without forcing a different
+ * direction-detection rule for the text inside the item.
+ */
 internal val LocalCompatibilityTextAlignOverride = compositionLocalOf<TextAlign?> { null }
 
+/**
+ * Returns the first strong bidi direction found before the first rendered line break in this node.
+ *
+ * Examples:
+ * - `AstText("...שלום")` returns [TextDirection.Rtl].
+ * - `AstText("...123")` returns `null`.
+ *
+ * Edge case:
+ * - A paragraph like `123\nhello` still returns `null`, because compatibility mode treats the
+ *   first visible line as decisive for block alignment and ignores stronger text on later lines.
+ */
 internal fun AstNode.firstStrongTextDirectionInFirstLine(): TextDirection? {
   var lineEnded = false
 
@@ -51,18 +66,50 @@ internal fun AstNode.firstStrongTextDirectionInFirstLine(): TextDirection? {
   return findFirstStrongTextDirection()
 }
 
+/**
+ * Maps a detected strong direction to the side compatibility mode should align toward.
+ *
+ * Examples:
+ * - [TextDirection.Ltr] becomes [TextAlign.Left].
+ * - [TextDirection.Rtl] becomes [TextAlign.Right].
+ * - `null` stays `null` so neutral content keeps ambient alignment.
+ */
 internal fun TextDirection?.toCompatibilityTextAlign(): TextAlign? = when (this) {
   TextDirection.Ltr -> TextAlign.Left
   TextDirection.Rtl -> TextAlign.Right
   else -> null
 }
 
+/**
+ * Maps a detected strong direction to a content-aware text direction.
+ *
+ * Examples:
+ * - [TextDirection.Ltr] becomes [TextDirection.ContentOrLtr].
+ * - [TextDirection.Rtl] becomes [TextDirection.ContentOrRtl].
+ *
+ * Edge case:
+ * - Returning [TextDirection.ContentOrLtr] instead of plain [TextDirection.Ltr] keeps an English
+ *   line left-to-right while still letting a later Hebrew line in the same block resolve itself.
+ */
 internal fun TextDirection?.toCompatibilityTextDirection(): TextDirection? = when (this) {
   TextDirection.Ltr -> TextDirection.ContentOrLtr
   TextDirection.Rtl -> TextDirection.ContentOrRtl
   else -> null
 }
 
+/**
+ * Scans text for the first strong bidi character and returns its direction.
+ *
+ * Examples:
+ * - `"123 hello"` returns [TextDirection.Ltr].
+ * - `"123 שלום"` returns [TextDirection.Rtl].
+ *
+ * Edge cases:
+ * - With `stopAtLineBreak = true`, `"123\nhello"` returns `null` instead of
+ *   [TextDirection.Ltr].
+ * - With `ignoreHtmlTags = true`, `"<b>שלום</b>"` returns [TextDirection.Rtl] rather than
+ *   treating tag characters as content.
+ */
 internal fun CharSequence.firstStrongTextDirection(
   stopAtLineBreak: Boolean = false,
   ignoreHtmlTags: Boolean = false,
