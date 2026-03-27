@@ -95,19 +95,7 @@ public fun RichTextScope.BasicMarkdown(
 ) {
   val markdownAnimationState = remember { MarkdownAnimationState() }
 
-  if (richTextRenderOptions.enableRtlCompatibility && astNode.type is AstDocument) {
-    BasicRichText(modifier = Modifier.width(IntrinsicSize.Max)) {
-      RecursiveRenderMarkdownAst(
-        astNode = astNode,
-        contentOverride = contentOverride,
-        inlineContentOverride = inlineContentOverride,
-        richTextRenderOptions = richTextRenderOptions,
-        richTextDecorations = richTextDecorations,
-        markdownAnimationState = markdownAnimationState,
-        astNodeComposer = astBlockNodeComposer,
-      )
-    }
-  } else {
+  @Composable fun renderMarkdownAst() {
     RecursiveRenderMarkdownAst(
       astNode = astNode,
       contentOverride = contentOverride,
@@ -117,6 +105,14 @@ public fun RichTextScope.BasicMarkdown(
       markdownAnimationState = markdownAnimationState,
       astNodeComposer = astBlockNodeComposer,
     )
+  }
+
+  if (richTextRenderOptions.enableRtlCompatibility && astNode.type is AstDocument) {
+    BasicRichText(modifier = Modifier.width(IntrinsicSize.Max)) {
+      renderMarkdownAst()
+    }
+  } else {
+    renderMarkdownAst()
   }
 }
 
