@@ -306,6 +306,7 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
           CompositionLocalProvider(
             LocalCompatibilityTextAlignOverride provides compatibilityDirection.toCompatibilityTextAlign(),
           ) {
+            // if this list item has no child, it should at least emit a single pixel layout.
             if (astListItem.links.firstChild == null) {
               BasicText("")
             } else {
