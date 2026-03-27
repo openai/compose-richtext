@@ -3,10 +3,12 @@ package com.halilibo.richtext.markdown
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import com.halilibo.richtext.markdown.node.AstCode
+import com.halilibo.richtext.markdown.node.AstFencedCodeBlock
 import com.halilibo.richtext.markdown.node.AstHardLineBreak
 import com.halilibo.richtext.markdown.node.AstHtmlBlock
 import com.halilibo.richtext.markdown.node.AstHtmlInline
 import com.halilibo.richtext.markdown.node.AstImage
+import com.halilibo.richtext.markdown.node.AstIndentedCodeBlock
 import com.halilibo.richtext.markdown.node.AstNode
 import com.halilibo.richtext.markdown.node.AstNodeType
 import com.halilibo.richtext.markdown.node.AstSoftLineBreak
@@ -130,6 +132,8 @@ private fun findNodeTypeFirstStrongTextDirection(
   val literal = when (nodeType) {
     is AstText -> nodeType.literal
     is AstCode -> nodeType.literal
+    is AstIndentedCodeBlock -> nodeType.literal
+    is AstFencedCodeBlock -> nodeType.literal
     is AstHtmlBlock -> nodeType.literal
     is AstHtmlInline -> nodeType.literal
     else -> return null

@@ -3,8 +3,10 @@ package com.halilibo.richtext.markdown
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import com.halilibo.richtext.markdown.node.AstCode
+import com.halilibo.richtext.markdown.node.AstFencedCodeBlock
 import com.halilibo.richtext.markdown.node.AstHtmlBlock
 import com.halilibo.richtext.markdown.node.AstHtmlInline
+import com.halilibo.richtext.markdown.node.AstIndentedCodeBlock
 import com.halilibo.richtext.markdown.node.AstNode
 import com.halilibo.richtext.markdown.node.AstNodeLinks
 import kotlin.test.Test
@@ -48,6 +50,29 @@ class TraverseUtilsTest {
     """.trimIndent()
 
     assertEquals(TextDirection.Ltr, code.firstStrongTextDirection(stopAtLineBreak = true))
+  }
+
+  @Test
+  fun blockCodeDirectionUsesFirstLineOnly() {
+    val englishFirstLine = """
+      val english = "Hello"
+      שלום
+    """.trimIndent()
+    val hebrewFirstLine = """
+      שלום
+      val english = "Hello"
+    """.trimIndent()
+
+    assertEquals(
+      TextDirection.Ltr,
+      AstNode(AstFencedCodeBlock('`', 3, 0, "", englishFirstLine), AstNodeLinks())
+        .firstStrongTextDirectionInFirstLine(),
+    )
+    assertEquals(
+      TextDirection.Rtl,
+      AstNode(AstIndentedCodeBlock(hebrewFirstLine), AstNodeLinks())
+        .firstStrongTextDirectionInFirstLine(),
+    )
   }
 
   @Test
