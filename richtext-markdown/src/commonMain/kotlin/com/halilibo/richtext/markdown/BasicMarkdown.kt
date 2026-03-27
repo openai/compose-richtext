@@ -93,19 +93,6 @@ public fun RichTextScope.BasicMarkdown(
 ) {
   val markdownAnimationState = remember { MarkdownAnimationState() }
 
-  @Composable
-  fun renderMarkdown() {
-    RecursiveRenderMarkdownAst(
-      astNode = astNode,
-      contentOverride = contentOverride,
-      inlineContentOverride = inlineContentOverride,
-      richTextRenderOptions = richTextRenderOptions,
-      richTextDecorations = richTextDecorations,
-      markdownAnimationState = markdownAnimationState,
-      astNodeComposer = astBlockNodeComposer,
-    )
-  }
-
   if (richTextRenderOptions.enableRtlCompatibility && astNode.type is AstDocument) {
     val documentDirection = remember(astNode) {
       astNode.firstStrongTextDirectionInSubtree()
@@ -118,11 +105,27 @@ public fun RichTextScope.BasicMarkdown(
       },
     ) {
       BasicRichText(modifier = Modifier.width(IntrinsicSize.Max)) {
-        renderMarkdown()
+        RecursiveRenderMarkdownAst(
+          astNode = astNode,
+          contentOverride = contentOverride,
+          inlineContentOverride = inlineContentOverride,
+          richTextRenderOptions = richTextRenderOptions,
+          richTextDecorations = richTextDecorations,
+          markdownAnimationState = markdownAnimationState,
+          astNodeComposer = astBlockNodeComposer,
+        )
       }
     }
   } else {
-    renderMarkdown()
+    RecursiveRenderMarkdownAst(
+      astNode = astNode,
+      contentOverride = contentOverride,
+      inlineContentOverride = inlineContentOverride,
+      richTextRenderOptions = richTextRenderOptions,
+      richTextDecorations = richTextDecorations,
+      markdownAnimationState = markdownAnimationState,
+      astNodeComposer = astBlockNodeComposer,
+    )
   }
 }
 
@@ -275,8 +278,7 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
           is AstBlockQuote,
           is AstIndentedCodeBlock,
           is AstFencedCodeBlock -> astNode
-          is AstUnorderedList -> astNode.childrenSequence()
-            .firstOrNull { it.type is AstListItem }
+          is AstUnorderedList,
           is AstOrderedList -> astNode.childrenSequence().firstOrNull()
           else -> null
         }?.firstStrongTextDirectionInFirstLine()
@@ -300,11 +302,7 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
       is AstUnorderedList,
       is AstOrderedList -> {
         val items = remember(astNode) {
-          when (astNodeType) {
-            is AstUnorderedList -> astNode.childrenSequence().filter { it.type is AstListItem }.toList()
-            is AstOrderedList -> astNode.childrenSequence().toList()
-            else -> emptyList()
-          }
+          astNode.childrenSequence().toList()
         }
         FormattedList(
           listType = if (astNodeType is AstOrderedList) Ordered else Unordered,

@@ -126,24 +126,18 @@ private fun findNodeTypeFirstStrongTextDirection(
   nodeType: AstNodeType,
   stopAtLineBreak: Boolean = false,
   onLineBreak: () -> Unit = {},
-): TextDirection? = when (nodeType) {
-  is AstText -> nodeType.literal.firstStrongTextDirection(
+): TextDirection? {
+  val literal = when (nodeType) {
+    is AstText -> nodeType.literal
+    is AstCode -> nodeType.literal
+    is AstHtmlBlock -> nodeType.literal
+    is AstHtmlInline -> nodeType.literal
+    else -> return null
+  }
+
+  return literal.firstStrongTextDirection(
     stopAtLineBreak = stopAtLineBreak,
+    ignoreHtmlTags = nodeType is AstHtmlBlock || nodeType is AstHtmlInline,
     onLineBreak = onLineBreak,
   )
-  is AstCode -> nodeType.literal.firstStrongTextDirection(
-    stopAtLineBreak = stopAtLineBreak,
-    onLineBreak = onLineBreak,
-  )
-  is AstHtmlBlock -> nodeType.literal.firstStrongTextDirection(
-    stopAtLineBreak = stopAtLineBreak,
-    ignoreHtmlTags = true,
-    onLineBreak = onLineBreak,
-  )
-  is AstHtmlInline -> nodeType.literal.firstStrongTextDirection(
-    stopAtLineBreak = stopAtLineBreak,
-    ignoreHtmlTags = true,
-    onLineBreak = onLineBreak,
-  )
-  else -> null
 }
