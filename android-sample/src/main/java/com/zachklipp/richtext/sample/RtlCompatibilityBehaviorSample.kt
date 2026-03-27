@@ -191,6 +191,58 @@ private fun NeutralItemBehaviorPreview() {
   }
 }
 
+@Preview(name = "RTL multiline paragraph focused · he-IL", locale = "he-rIL", widthDp = 412, showBackground = true)
+@Composable
+private fun MultilineParagraphFocusedPreview() {
+  BehaviorPreviewSurface {
+    BehaviorPreviewColumn {
+      ComparisonSection(
+        title = "Later lines do not flip the paragraph direction",
+        markdown = multilineParagraphMarkdown,
+      )
+    }
+  }
+}
+
+@Preview(name = "RTL multiline quote focused · he-IL", locale = "he-rIL", widthDp = 412, showBackground = true)
+@Composable
+private fun MultilineQuoteFocusedPreview() {
+  BehaviorPreviewSurface {
+    BehaviorPreviewColumn {
+      ComparisonSection(
+        title = "Later Hebrew quote lines keep the gutter side stable",
+        markdown = multilineQuoteMarkdown,
+      )
+    }
+  }
+}
+
+@Preview(name = "RTL multiline list focused · he-IL", locale = "he-rIL", widthDp = 412, showBackground = true)
+@Composable
+private fun MultilineListFocusedPreview() {
+  BehaviorPreviewSurface {
+    BehaviorPreviewColumn {
+      ComparisonSection(
+        title = "Later Hebrew list lines keep the marker side stable",
+        markdown = multilineListMarkdown,
+      )
+    }
+  }
+}
+
+@Preview(name = "RTL multiline code focused · he-IL", locale = "he-rIL", widthDp = 412, showBackground = true)
+@Composable
+private fun MultilineCodeFocusedPreview() {
+  BehaviorPreviewSurface {
+    BehaviorPreviewColumn {
+      ComparisonSection(
+        title = "Later Hebrew code lines keep the block side stable",
+        markdown = multilineCodeMarkdown,
+      )
+    }
+  }
+}
+
 @Preview(name = "RTL document width behavior · he-IL", locale = "he-rIL", widthDp = 412, showBackground = true)
 @Composable
 private fun DocumentWidthBehaviorPreview() {
@@ -261,6 +313,11 @@ private fun ComparisonSection(
   title: String,
   markdown: String,
 ) {
+  val uiDirectionLabel = if (LocalLayoutDirection.current == LayoutDirection.Rtl) {
+    "RTL UI"
+  } else {
+    "LTR UI"
+  }
   Column(
     modifier = Modifier.fillMaxWidth(),
     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -270,7 +327,7 @@ private fun ComparisonSection(
       style = MaterialTheme.typography.labelLarge,
     )
     Text(
-      text = "compatibility off",
+      text = "compatibility off · $uiDirectionLabel",
       style = MaterialTheme.typography.bodySmall,
     )
     BehaviorCard {
@@ -280,7 +337,7 @@ private fun ComparisonSection(
       )
     }
     Text(
-      text = "compatibility on",
+      text = "compatibility on · $uiDirectionLabel",
       style = MaterialTheme.typography.bodySmall,
     )
     BehaviorCard {
@@ -405,6 +462,30 @@ private val neutralParagraphMarkdown = """
 
 private val singleStrongParagraphMarkdown = """
   word
+""".trimIndent()
+
+private val multilineParagraphMarkdown = """
+  This line starts in English.  
+  עברית בשורה השנייה לא משנה את כיוון הפסקה.
+""".trimIndent()
+
+private val multilineQuoteMarkdown = """
+  > This line starts in English.  
+  > עברית בשורה השנייה משנה רק את הכיוון.
+""".trimIndent()
+
+private val multilineListMarkdown = """
+  - This line starts in English.  
+    עברית בשורה השנייה משנה רק את הכיוון.
+""".trimIndent()
+
+private val multilineCodeMarkdown = """
+  This paragraph is intentionally much wider than the code block below so compatibility mode has room to align the block without changing its side.
+
+  ```
+  This line starts in English.
+  עברית בשורה השנייה משנה רק את הכיוון.
+  ```
 """.trimIndent()
 
 private val englishDocumentWithOrderedListMarkdown = """
