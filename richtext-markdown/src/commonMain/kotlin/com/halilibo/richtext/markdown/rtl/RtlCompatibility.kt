@@ -66,31 +66,12 @@ internal fun AstNode.firstStrongTextDirectionInFirstLine(): TextDirection? {
   return findFirstStrongTextDirection()
 }
 
-/**
- * Maps a detected strong direction to the side compatibility mode should align toward.
- *
- * Examples:
- * - [TextDirection.Ltr] becomes [TextAlign.Left].
- * - [TextDirection.Rtl] becomes [TextAlign.Right].
- * - `null` stays `null` so neutral content keeps ambient alignment.
- */
 internal fun TextDirection?.toCompatibilityTextAlign(): TextAlign? = when (this) {
   TextDirection.Ltr -> TextAlign.Left
   TextDirection.Rtl -> TextAlign.Right
   else -> null
 }
 
-/**
- * Maps a detected strong direction to a content-aware text direction.
- *
- * Examples:
- * - [TextDirection.Ltr] becomes [TextDirection.ContentOrLtr].
- * - [TextDirection.Rtl] becomes [TextDirection.ContentOrRtl].
- *
- * Edge case:
- * - Returning [TextDirection.ContentOrLtr] instead of plain [TextDirection.Ltr] keeps an English
- *   line left-to-right while still letting a later Hebrew line in the same block resolve itself.
- */
 internal fun TextDirection?.toCompatibilityTextDirection(): TextDirection? = when (this) {
   TextDirection.Ltr -> TextDirection.ContentOrLtr
   TextDirection.Rtl -> TextDirection.ContentOrRtl
