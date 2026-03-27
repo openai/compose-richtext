@@ -23,10 +23,10 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.offset
 import androidx.compose.ui.unit.sp
 import com.halilibo.richtext.ui.BlockQuoteGutter.BarGutter
+import com.halilibo.richtext.ui.rtl.resolveRtlCompatibleLayoutDirection
+import com.halilibo.richtext.ui.rtl.shouldFillWidthForRtlCompatibility
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
-import com.halilibo.richtext.ui.string.resolveRtlCompatibleLayoutDirection
-import com.halilibo.richtext.ui.string.shouldFillWidthForRtlCompatibility
 
 internal val DefaultBlockQuoteGutter = BarGutter()
 

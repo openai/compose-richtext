@@ -2,6 +2,10 @@ package com.halilibo.richtext.markdown
 
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
+import com.halilibo.richtext.markdown.rtl.firstStrongTextDirection
+import com.halilibo.richtext.markdown.rtl.firstStrongTextDirectionInFirstLine
+import com.halilibo.richtext.markdown.rtl.toCompatibilityTextAlign
+import com.halilibo.richtext.markdown.rtl.toCompatibilityTextDirection
 import com.halilibo.richtext.markdown.node.AstCode
 import com.halilibo.richtext.markdown.node.AstFencedCodeBlock
 import com.halilibo.richtext.markdown.node.AstHtmlBlock

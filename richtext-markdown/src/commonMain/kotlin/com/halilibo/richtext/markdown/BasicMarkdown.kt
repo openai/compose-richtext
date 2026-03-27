@@ -10,6 +10,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import com.halilibo.richtext.markdown.rtl.LocalCompatibilityTextAlignOverride
+import com.halilibo.richtext.markdown.rtl.firstStrongTextDirectionInFirstLine
+import com.halilibo.richtext.markdown.rtl.toCompatibilityTextAlign
+import com.halilibo.richtext.markdown.rtl.toCompatibilityTextDirection
 import com.halilibo.richtext.markdown.node.AstBlockNodeType
 import com.halilibo.richtext.markdown.node.AstBlockQuote
 import com.halilibo.richtext.markdown.node.AstDocument

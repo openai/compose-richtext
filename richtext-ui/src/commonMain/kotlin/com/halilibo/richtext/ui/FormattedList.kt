@@ -27,9 +27,9 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import com.halilibo.richtext.ui.ListType.Ordered
 import com.halilibo.richtext.ui.ListType.Unordered
+import com.halilibo.richtext.ui.rtl.shouldFillWidthForRtlCompatibility
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
-import com.halilibo.richtext.ui.string.shouldFillWidthForRtlCompatibility
 import kotlin.math.max
 
 public enum class ListType {

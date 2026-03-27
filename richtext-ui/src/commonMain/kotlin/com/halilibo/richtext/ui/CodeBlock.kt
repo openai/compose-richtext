@@ -17,9 +17,9 @@ import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
+import com.halilibo.richtext.ui.rtl.shouldFillWidthForRtlCompatibility
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
-import com.halilibo.richtext.ui.string.shouldFillWidthForRtlCompatibility
 
 /**
  * Defines how [CodeBlock]s are rendered.

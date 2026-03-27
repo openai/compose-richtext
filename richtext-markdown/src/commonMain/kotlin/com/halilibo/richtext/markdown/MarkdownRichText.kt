@@ -2,14 +2,15 @@ package com.halilibo.richtext.markdown
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.halilibo.richtext.markdown.rtl.LocalCompatibilityTextAlignOverride
+import com.halilibo.richtext.markdown.rtl.firstStrongTextDirection
+import com.halilibo.richtext.markdown.rtl.toCompatibilityTextAlign
+import com.halilibo.richtext.markdown.rtl.toCompatibilityTextDirection
 import com.halilibo.richtext.markdown.node.AstBlockQuote
 import com.halilibo.richtext.markdown.node.AstCode
 import com.halilibo.richtext.markdown.node.AstEmphasis
@@ -37,8 +38,6 @@ import com.halilibo.richtext.ui.string.RichTextRenderOptions
 import com.halilibo.richtext.ui.string.RichTextString
 import com.halilibo.richtext.ui.string.Text
 import com.halilibo.richtext.ui.string.withFormat
-
-internal val LocalCompatibilityTextAlignOverride = compositionLocalOf<TextAlign?> { null }
 
 /**
  * Only render the text content that exists below [astNode]. All the content blocks
@@ -85,13 +84,11 @@ internal fun RichTextScope.MarkdownRichText(
   } else {
     null
   }
-  val textAlign = LocalCompatibilityTextAlignOverride.current
-    ?: compatibilityDirection.toCompatibilityTextAlign()
   val textDirection = compatibilityDirection.toCompatibilityTextDirection()
 
   Text(
     text = richText,
-    modifier = if (textAlign != null) {
+    modifier = if (compatibilityDirection != null) {
       modifier.fillMaxWidth()
     } else {
       modifier
@@ -100,7 +97,8 @@ internal fun RichTextScope.MarkdownRichText(
     renderOptions = richTextRenderOptions,
     sharedAnimationState = markdownAnimationState,
     decorations = richTextDecorations,
-    textAlign = textAlign,
+    textAlign = LocalCompatibilityTextAlignOverride.current
+      ?: compatibilityDirection.toCompatibilityTextAlign(),
     textDirection = textDirection,
   )
 }

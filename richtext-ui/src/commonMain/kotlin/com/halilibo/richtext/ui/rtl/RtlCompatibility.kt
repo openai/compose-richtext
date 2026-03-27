@@ -1,9 +1,8 @@
-package com.halilibo.richtext.ui.string
+package com.halilibo.richtext.ui.rtl
 
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.LayoutDirection
+import com.halilibo.richtext.ui.string.RichTextRenderOptions
 
 internal fun shouldFillWidthForRtlCompatibility(
   renderOptions: RichTextRenderOptions,
