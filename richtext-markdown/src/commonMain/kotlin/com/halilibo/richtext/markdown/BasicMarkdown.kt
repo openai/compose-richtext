@@ -269,20 +269,17 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
     markdownAnimationState: MarkdownAnimationState,
     visitChildren: @Composable (AstNode) -> Unit
   ) {
-    val enableRtlCompatibility = richTextRenderOptions.enableRtlCompatibility
-    val compatibilityDirection = if (enableRtlCompatibility) {
+    val compatibilityDirection = if (richTextRenderOptions.enableRtlCompatibility) {
       remember(astNode) {
         when (astNode.type) {
           is AstBlockQuote,
           is AstIndentedCodeBlock,
-          is AstFencedCodeBlock -> listOf(astNode)
+          is AstFencedCodeBlock -> astNode
           is AstUnorderedList -> astNode.childrenSequence()
             .firstOrNull { it.type is AstListItem }
-            ?.let(::listOf)
-            .orEmpty()
-          is AstOrderedList -> astNode.childrenSequence().take(1).toList()
-          else -> emptyList()
-        }.firstOrNull()?.firstStrongTextDirectionInFirstLine()
+          is AstOrderedList -> astNode.childrenSequence().firstOrNull()
+          else -> null
+        }?.firstStrongTextDirectionInFirstLine()
       }
     } else {
       null
