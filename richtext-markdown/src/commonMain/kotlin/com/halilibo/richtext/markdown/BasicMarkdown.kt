@@ -8,10 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.LayoutDirection
 import com.halilibo.richtext.markdown.node.AstBlockNodeType
 import com.halilibo.richtext.markdown.node.AstBlockQuote
 import com.halilibo.richtext.markdown.node.AstDocument
@@ -94,27 +92,16 @@ public fun RichTextScope.BasicMarkdown(
   val markdownAnimationState = remember { MarkdownAnimationState() }
 
   if (richTextRenderOptions.enableRtlCompatibility && astNode.type is AstDocument) {
-    val documentDirection = remember(astNode) {
-      astNode.firstStrongTextDirectionInSubtree()
-    }
-    CompositionLocalProvider(
-      LocalLayoutDirection provides when (documentDirection) {
-        androidx.compose.ui.text.style.TextDirection.Ltr -> LayoutDirection.Ltr
-        androidx.compose.ui.text.style.TextDirection.Rtl -> LayoutDirection.Rtl
-        else -> LocalLayoutDirection.current
-      },
-    ) {
-      BasicRichText(modifier = Modifier.width(IntrinsicSize.Max)) {
-        RecursiveRenderMarkdownAst(
-          astNode = astNode,
-          contentOverride = contentOverride,
-          inlineContentOverride = inlineContentOverride,
-          richTextRenderOptions = richTextRenderOptions,
-          richTextDecorations = richTextDecorations,
-          markdownAnimationState = markdownAnimationState,
-          astNodeComposer = astBlockNodeComposer,
-        )
-      }
+    BasicRichText(modifier = Modifier.width(IntrinsicSize.Max)) {
+      RecursiveRenderMarkdownAst(
+        astNode = astNode,
+        contentOverride = contentOverride,
+        inlineContentOverride = inlineContentOverride,
+        richTextRenderOptions = richTextRenderOptions,
+        richTextDecorations = richTextDecorations,
+        markdownAnimationState = markdownAnimationState,
+        astNodeComposer = astBlockNodeComposer,
+      )
     }
   } else {
     RecursiveRenderMarkdownAst(
@@ -272,19 +259,19 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
     markdownAnimationState: MarkdownAnimationState,
     visitChildren: @Composable (AstNode) -> Unit
   ) {
-    val compatibilityDirection = if (richTextRenderOptions.enableRtlCompatibility) {
-      remember(astNode) {
+    val compatibilityDirection = remember(astNode) {
+      if (richTextRenderOptions.enableRtlCompatibility) {
         when (astNode.type) {
           is AstBlockQuote,
           is AstIndentedCodeBlock,
           is AstFencedCodeBlock -> astNode
           is AstUnorderedList,
-          is AstOrderedList -> astNode.childrenSequence().firstOrNull()
+          is AstOrderedList -> astNode.links.firstChild
           else -> null
-        }?.firstStrongTextDirectionInSubtree()
+        }?.firstStrongTextDirectionInFirstLine()
+      } else {
+        null
       }
-    } else {
-      null
     }
 
     when (val astNodeType = astNode.type) {
@@ -295,7 +282,11 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
           richTextRenderOptions = richTextRenderOptions,
           gutterDirection = compatibilityDirection,
         ) {
-          visitChildren(astNode)
+          CompositionLocalProvider(
+            LocalCompatibilityTextAlignOverride provides compatibilityDirection.toCompatibilityTextAlign(),
+          ) {
+            visitChildren(astNode)
+          }
         }
       }
 
@@ -350,7 +341,7 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
           modifier = if (compatibilityDirection != null) Modifier.fillMaxWidth() else Modifier,
-          textDirection = compatibilityDirection,
+          textDirection = compatibilityDirection.toCompatibilityTextDirection(),
           textAlign = compatibilityDirection.toCompatibilityTextAlign(),
         )
       }
@@ -361,7 +352,7 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
           modifier = if (compatibilityDirection != null) Modifier.fillMaxWidth() else Modifier,
-          textDirection = compatibilityDirection,
+          textDirection = compatibilityDirection.toCompatibilityTextDirection(),
           textAlign = compatibilityDirection.toCompatibilityTextAlign(),
         )
       }

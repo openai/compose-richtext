@@ -49,16 +49,44 @@ internal inline fun <reified T : AstNodeType> AstNode.filterChildrenType(): Sequ
  */
 internal fun AstNode.isRichTextTerminal(): Boolean {
   return type is AstText
-    || type is AstCode
-    || type is AstImage
-    || type is AstSoftLineBreak
-    || type is AstHardLineBreak
+          || type is AstCode
+          || type is AstImage
+          || type is AstSoftLineBreak
+          || type is AstHardLineBreak
 }
 
-internal fun AstNode.firstStrongTextDirectionInSubtree(): TextDirection? {
-  return findNodeTypeFirstStrongTextDirection(type) ?: childrenSequence().firstNotNullOfOrNull { child ->
-    child.firstStrongTextDirectionInSubtree()
+internal fun AstNode.firstStrongTextDirectionInFirstLine(): TextDirection? {
+  var lineEnded = false
+
+  fun AstNode.findFirstStrongTextDirection(): TextDirection? {
+    if (lineEnded) return null
+
+    if (type is AstSoftLineBreak || type is AstHardLineBreak) {
+      lineEnded = true
+      return null
+    }
+
+    val literal = when (type) {
+      is AstText -> type.literal
+      is AstCode -> type.literal
+      is AstIndentedCodeBlock -> type.literal
+      is AstFencedCodeBlock -> type.literal
+      is AstHtmlBlock -> type.literal
+      is AstHtmlInline -> type.literal
+      else -> null
+    }
+    val findNodeTypeFirstStrongTextDirection = literal?.firstStrongTextDirection(
+      stopAtLineBreak = true,
+      ignoreHtmlTags = type is AstHtmlBlock || type is AstHtmlInline,
+      onLineBreak = { lineEnded = true },
+    )
+
+    return findNodeTypeFirstStrongTextDirection ?: childrenSequence().firstNotNullOfOrNull { child ->
+      child.findFirstStrongTextDirection()
+    }
   }
+
+  return findFirstStrongTextDirection()
 }
 
 internal fun TextDirection?.toCompatibilityTextAlign(): TextAlign? = when (this) {
@@ -67,11 +95,24 @@ internal fun TextDirection?.toCompatibilityTextAlign(): TextAlign? = when (this)
   else -> null
 }
 
+internal fun TextDirection?.toCompatibilityTextDirection(): TextDirection? = when (this) {
+  TextDirection.Ltr -> TextDirection.ContentOrLtr
+  TextDirection.Rtl -> TextDirection.ContentOrRtl
+  else -> null
+}
+
 internal fun CharSequence.firstStrongTextDirection(
+  stopAtLineBreak: Boolean = false,
   ignoreHtmlTags: Boolean = false,
+  onLineBreak: () -> Unit = {},
 ): TextDirection? {
   var insideHtmlTag = false
   for (char in this) {
+    if (stopAtLineBreak && (char == '\n' || char == '\r')) {
+      onLineBreak()
+      return null
+    }
+
     when {
       ignoreHtmlTags && char == '<' -> insideHtmlTag = true
       ignoreHtmlTags && insideHtmlTag && char == '>' -> insideHtmlTag = false
@@ -92,22 +133,4 @@ internal fun CharSequence.firstStrongTextDirection(
   }
 
   return null
-}
-
-private fun findNodeTypeFirstStrongTextDirection(
-  nodeType: AstNodeType,
-): TextDirection? {
-  val literal = when (nodeType) {
-    is AstText -> nodeType.literal
-    is AstCode -> nodeType.literal
-    is AstIndentedCodeBlock -> nodeType.literal
-    is AstFencedCodeBlock -> nodeType.literal
-    is AstHtmlBlock -> nodeType.literal
-    is AstHtmlInline -> nodeType.literal
-    else -> return null
-  }
-
-  return literal.firstStrongTextDirection(
-    ignoreHtmlTags = nodeType is AstHtmlBlock || nodeType is AstHtmlInline,
-  )
 }

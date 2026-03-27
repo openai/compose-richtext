@@ -14,13 +14,12 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
-import com.halilibo.richtext.ui.string.applyRtlCompatibilityFillWidth
+import com.halilibo.richtext.ui.string.shouldFillWidthForRtlCompatibility
 
 /**
  * Defines how [CodeBlock]s are rendered.
@@ -83,7 +82,7 @@ internal fun CodeBlockStyle.resolveDefaults() = CodeBlockStyle(
   ) {
     Text(
       text = text,
-      modifier = if (textAlign != null || textDirection != null) {
+      modifier = if (textAlign != null) {
         Modifier.fillMaxWidth()
       } else {
         Modifier
@@ -123,9 +122,15 @@ internal fun CodeBlockStyle.resolveDefaults() = CodeBlockStyle(
   ) { layoutModifier ->
     Box(
       modifier = layoutModifier
+        .graphicsLayer{ this.alpha = alpha.value }
         .then(modifier)
-        .applyRtlCompatibilityFillWidth(richTextRenderOptions, textDirection)
-        .graphicsLayer { this.alpha = alpha.value }
+        .let {
+          if (richTextRenderOptions.enableRtlCompatibility && textAlign != null) {
+            it.fillMaxWidth()
+          } else {
+            it
+          }
+        }
         .then(blockModifier)
         .padding(blockPadding)
     ) {

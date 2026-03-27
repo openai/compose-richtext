@@ -19,10 +19,10 @@ import kotlin.test.assertNull
 class TraverseUtilsTest {
 
   @Test
-  fun firstStrongDirectionSkipsNeutralPrefix() {
-    assertEquals(TextDirection.Rtl, "...שלום".firstStrongTextDirection())
-    assertEquals(TextDirection.Ltr, "...hello".firstStrongTextDirection())
-    assertNull("...123".firstStrongTextDirection())
+  fun firstStrongDirectionInFirstLineSkipsNeutralPrefix() {
+    assertEquals(TextDirection.Rtl, "...שלום".firstStrongTextDirection(stopAtLineBreak = true))
+    assertEquals(TextDirection.Ltr, "...hello".firstStrongTextDirection(stopAtLineBreak = true))
+    assertNull("...123".firstStrongTextDirection(stopAtLineBreak = true))
   }
 
   @Test
@@ -32,7 +32,7 @@ class TraverseUtilsTest {
       links = AstNodeLinks(),
     )
 
-    assertEquals(TextDirection.Rtl, astNode.firstStrongTextDirectionInSubtree())
+    assertEquals(TextDirection.Rtl, astNode.firstStrongTextDirectionInFirstLine())
   }
 
   @Test
@@ -42,44 +42,44 @@ class TraverseUtilsTest {
       links = AstNodeLinks(),
     )
 
-    assertNull(astNode.firstStrongTextDirectionInSubtree())
+    assertNull(astNode.firstStrongTextDirectionInFirstLine())
   }
 
   @Test
-  fun codeDirectionUsesLaterLinesWhenNeeded() {
+  fun codeDirectionUsesFirstLineOnly() {
     val code = """
-      123
-      hello
+      val english = "Hello"
+      שלום
     """.trimIndent()
 
-    assertEquals(TextDirection.Ltr, code.firstStrongTextDirection())
+    assertEquals(TextDirection.Ltr, code.firstStrongTextDirection(stopAtLineBreak = true))
   }
 
   @Test
-  fun blockCodeDirectionUsesLaterLinesWhenNeeded() {
-    val englishLaterLine = """
-      123
-      hello
-    """.trimIndent()
-    val hebrewLaterLine = """
-      123
+  fun blockCodeDirectionUsesFirstLineOnly() {
+    val englishFirstLine = """
+      val english = "Hello"
       שלום
+    """.trimIndent()
+    val hebrewFirstLine = """
+      שלום
+      val english = "Hello"
     """.trimIndent()
 
     assertEquals(
       TextDirection.Ltr,
-      AstNode(AstFencedCodeBlock('`', 3, 0, "", englishLaterLine), AstNodeLinks())
-        .firstStrongTextDirectionInSubtree(),
+      AstNode(AstFencedCodeBlock('`', 3, 0, "", englishFirstLine), AstNodeLinks())
+        .firstStrongTextDirectionInFirstLine(),
     )
     assertEquals(
       TextDirection.Rtl,
-      AstNode(AstIndentedCodeBlock(hebrewLaterLine), AstNodeLinks())
-        .firstStrongTextDirectionInSubtree(),
+      AstNode(AstIndentedCodeBlock(hebrewFirstLine), AstNodeLinks())
+        .firstStrongTextDirectionInFirstLine(),
     )
   }
 
   @Test
-  fun containerDirectionUsesLaterLinesWhenNeeded() {
+  fun containerDirectionUsesFirstLineOnly() {
     val firstText = AstNode(AstText("123"), AstNodeLinks())
     val lineBreak = AstNode(AstSoftLineBreak, AstNodeLinks(previous = firstText))
     val secondText = AstNode(AstText("hello"), AstNodeLinks(previous = lineBreak))
@@ -97,7 +97,7 @@ class TraverseUtilsTest {
     lineBreak.links.parent = paragraph
     secondText.links.parent = paragraph
 
-    assertEquals(TextDirection.Ltr, paragraph.firstStrongTextDirectionInSubtree())
+    assertNull(paragraph.firstStrongTextDirectionInFirstLine())
   }
 
   @Test
@@ -105,5 +105,12 @@ class TraverseUtilsTest {
     assertEquals(TextAlign.Left, TextDirection.Ltr.toCompatibilityTextAlign())
     assertEquals(TextAlign.Right, TextDirection.Rtl.toCompatibilityTextAlign())
     assertNull(null.toCompatibilityTextAlign())
+  }
+
+  @Test
+  fun compatibilityTextDirectionMatchesDirection() {
+    assertEquals(TextDirection.ContentOrLtr, TextDirection.Ltr.toCompatibilityTextDirection())
+    assertEquals(TextDirection.ContentOrRtl, TextDirection.Rtl.toCompatibilityTextDirection())
+    assertNull(null.toCompatibilityTextDirection())
   }
 }
