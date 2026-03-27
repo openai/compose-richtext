@@ -16,12 +16,15 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.offset
 import androidx.compose.ui.unit.sp
 import com.halilibo.richtext.ui.BlockQuoteGutter.BarGutter
+import com.halilibo.richtext.ui.rtl.resolveRtlCompatibleLayoutDirection
+import com.halilibo.richtext.ui.rtl.shouldFillWidthForRtlCompatibility
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
 
@@ -74,6 +77,7 @@ public interface BlockQuoteGutter {
 @Composable public fun RichTextScope.BlockQuote(
   markdownAnimationState: MarkdownAnimationState = remember { MarkdownAnimationState() },
   richTextRenderOptions: RichTextRenderOptions = RichTextRenderOptions(),
+  gutterDirection: TextDirection? = null,
   children: @Composable RichTextScope.() -> Unit
 ) {
   val gutter = currentRichTextStyle.resolveDefaults().blockQuoteGutter!!
@@ -99,14 +103,23 @@ public interface BlockQuoteGutter {
     // Measure the contents with the confined width.
     // This must be done before measuring the gutter so that the gutter gets
     // the correct height.
-    val contentsConstraints = constraints.offset(horizontal = -gutterWidth)
+    val contentsConstraints = constraints
+      .offset(horizontal = -gutterWidth)
+      .let {
+        if (shouldFillWidthForRtlCompatibility(richTextRenderOptions, gutterDirection) && it.hasBoundedWidth) {
+          it.copy(minWidth = it.maxWidth)
+        } else {
+          it
+        }
+      }
     val contentsPlaceable = contentsMeasurable.measure(contentsConstraints)
-    val layoutWidth = contentsPlaceable.width + gutterWidth
+    val layoutWidth = maxOf(contentsPlaceable.width + gutterWidth, constraints.minWidth)
     val layoutHeight = contentsPlaceable.height
 
     // Measure the gutter to fit in its min intrinsic width and exactly the
     // height of the contents.
     val gutterConstraints = constraints.copy(
+      minWidth = 0,
       maxWidth = gutterWidth,
       minHeight = layoutHeight,
       maxHeight = layoutHeight
@@ -114,8 +127,22 @@ public interface BlockQuoteGutter {
     val gutterPlaceable = gutterMeasurable.measure(gutterConstraints)
 
     layout(layoutWidth, layoutHeight) {
-      gutterPlaceable.place(IntOffset.Zero)
-      contentsPlaceable.place(gutterWidth, 0)
+      if (richTextRenderOptions.enableRtlCompatibility && gutterDirection != null) {
+        val resolvedLayoutDirection = resolveRtlCompatibleLayoutDirection(
+          contentDirection = gutterDirection,
+          systemDirection = layoutDirection,
+        )
+        if (resolvedLayoutDirection == androidx.compose.ui.unit.LayoutDirection.Rtl) {
+          contentsPlaceable.place(0, 0)
+          gutterPlaceable.place(layoutWidth - gutterWidth, 0)
+        } else {
+          gutterPlaceable.place(IntOffset.Zero)
+          contentsPlaceable.place(gutterWidth, 0)
+        }
+      } else {
+        gutterPlaceable.place(IntOffset.Zero)
+        contentsPlaceable.place(gutterWidth, 0)
+      }
     }
   }
 }

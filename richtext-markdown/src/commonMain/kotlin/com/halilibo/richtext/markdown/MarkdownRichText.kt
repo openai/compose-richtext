@@ -2,12 +2,15 @@ package com.halilibo.richtext.markdown
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.halilibo.richtext.markdown.rtl.LocalCompatibilityTextAlignOverride
+import com.halilibo.richtext.markdown.rtl.firstStrongTextDirection
+import com.halilibo.richtext.markdown.rtl.toCompatibilityTextAlign
+import com.halilibo.richtext.markdown.rtl.toCompatibilityTextDirection
 import com.halilibo.richtext.markdown.node.AstBlockQuote
 import com.halilibo.richtext.markdown.node.AstCode
 import com.halilibo.richtext.markdown.node.AstEmphasis
@@ -69,17 +72,34 @@ internal fun RichTextScope.MarkdownRichText(
   modifier: Modifier = Modifier,
 ) {
   // Assume that only RichText nodes reside below this level.
-  val richText = remember(astNode) {
+  val enableCompatibilityDirection = richTextRenderOptions.enableRtlCompatibility &&
+    (astNode.type is AstParagraph || astNode.type is AstHeading)
+  val richText = remember(astNode, inlineContentOverride) {
     computeRichTextString(astNode, inlineContentOverride)
   }
+  val compatibilityDirection = if (enableCompatibilityDirection) {
+    remember(richText) {
+      richText.text.firstStrongTextDirection(stopAtLineBreak = true)
+    }
+  } else {
+    null
+  }
+  val textDirection = compatibilityDirection.toCompatibilityTextDirection()
 
   Text(
     text = richText,
-    modifier = modifier,
+    modifier = if (compatibilityDirection != null) {
+      modifier.fillMaxWidth()
+    } else {
+      modifier
+    },
     isLeafText = astNode.isLastInTree(),
     renderOptions = richTextRenderOptions,
     sharedAnimationState = markdownAnimationState,
     decorations = richTextDecorations,
+    textAlign = LocalCompatibilityTextAlignOverride.current
+      ?: compatibilityDirection.toCompatibilityTextAlign(),
+    textDirection = textDirection,
   )
 }
 

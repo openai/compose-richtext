@@ -2,6 +2,7 @@ package com.halilibo.richtext.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -11,10 +12,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
+import com.halilibo.richtext.ui.rtl.shouldFillWidthForRtlCompatibility
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
 
@@ -64,14 +67,29 @@ internal fun CodeBlockStyle.resolveDefaults() = CodeBlockStyle(
   text: String,
   markdownAnimationState: MarkdownAnimationState = remember { MarkdownAnimationState() },
   richTextRenderOptions: RichTextRenderOptions = RichTextRenderOptions(),
-  wordWrap: Boolean? = null
+  wordWrap: Boolean? = null,
+  modifier: Modifier = Modifier,
+  textAlign: TextAlign? = null,
+  textDirection: TextDirection? = null,
 ) {
   CodeBlock(
     wordWrap = wordWrap,
     markdownAnimationState = markdownAnimationState,
     richTextRenderOptions = richTextRenderOptions,
+    modifier = modifier,
+    textAlign = textAlign,
+    textDirection = textDirection,
   ) {
-    Text(text)
+    Text(
+      text = text,
+      modifier = if (textAlign != null) {
+        Modifier.fillMaxWidth()
+      } else {
+        Modifier
+      },
+      textAlign = textAlign,
+      textDirection = textDirection,
+    )
   }
 }
 
@@ -85,11 +103,14 @@ internal fun CodeBlockStyle.resolveDefaults() = CodeBlockStyle(
   wordWrap: Boolean? = null,
   markdownAnimationState: MarkdownAnimationState = remember { MarkdownAnimationState() },
   richTextRenderOptions: RichTextRenderOptions = RichTextRenderOptions(),
+  modifier: Modifier = Modifier,
+  textAlign: TextAlign? = null,
+  textDirection: TextDirection? = null,
   children: @Composable RichTextScope.() -> Unit
 ) {
   val codeBlockStyle = currentRichTextStyle.resolveDefaults().codeBlockStyle!!
   val textStyle = currentTextStyle.merge(codeBlockStyle.textStyle)
-  val modifier = codeBlockStyle.modifier!!
+  val blockModifier = codeBlockStyle.modifier!!
   val blockPadding = with(LocalDensity.current) {
     codeBlockStyle.padding!!.toDp()
   }
@@ -103,6 +124,14 @@ internal fun CodeBlockStyle.resolveDefaults() = CodeBlockStyle(
       modifier = layoutModifier
         .graphicsLayer{ this.alpha = alpha.value }
         .then(modifier)
+        .let {
+          if (richTextRenderOptions.enableRtlCompatibility && textAlign != null) {
+            it.fillMaxWidth()
+          } else {
+            it
+          }
+        }
+        .then(blockModifier)
         .padding(blockPadding)
     ) {
       textStyleBackProvider(textStyle) {

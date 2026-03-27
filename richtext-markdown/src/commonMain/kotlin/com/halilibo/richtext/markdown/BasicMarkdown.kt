@@ -1,11 +1,19 @@
 package com.halilibo.richtext.markdown
 
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import com.halilibo.richtext.markdown.rtl.LocalCompatibilityTextAlignOverride
+import com.halilibo.richtext.markdown.rtl.firstStrongTextDirectionInFirstLine
+import com.halilibo.richtext.markdown.rtl.toCompatibilityTextAlign
+import com.halilibo.richtext.markdown.rtl.toCompatibilityTextDirection
 import com.halilibo.richtext.markdown.node.AstBlockNodeType
 import com.halilibo.richtext.markdown.node.AstBlockQuote
 import com.halilibo.richtext.markdown.node.AstDocument
@@ -27,6 +35,7 @@ import com.halilibo.richtext.markdown.node.AstTableRow
 import com.halilibo.richtext.markdown.node.AstText
 import com.halilibo.richtext.markdown.node.AstThematicBreak
 import com.halilibo.richtext.markdown.node.AstUnorderedList
+import com.halilibo.richtext.ui.BasicRichText
 import com.halilibo.richtext.ui.BlockQuote
 import com.halilibo.richtext.ui.CodeBlock
 import com.halilibo.richtext.ui.FormattedList
@@ -84,15 +93,31 @@ public fun RichTextScope.BasicMarkdown(
   richTextDecorations: RichTextDecorations = RichTextDecorations(),
   astBlockNodeComposer: AstBlockNodeComposer? = null,
 ) {
-  RecursiveRenderMarkdownAst(
-    astNode = astNode,
-    contentOverride = contentOverride,
-    inlineContentOverride = inlineContentOverride,
-    richTextRenderOptions = richTextRenderOptions,
-    richTextDecorations = richTextDecorations,
-    markdownAnimationState = remember { MarkdownAnimationState() },
-    astNodeComposer = astBlockNodeComposer,
-  )
+  val markdownAnimationState = remember { MarkdownAnimationState() }
+
+  if (richTextRenderOptions.enableRtlCompatibility && astNode.type is AstDocument) {
+    BasicRichText(modifier = Modifier.width(IntrinsicSize.Max)) {
+      RecursiveRenderMarkdownAst(
+        astNode = astNode,
+        contentOverride = contentOverride,
+        inlineContentOverride = inlineContentOverride,
+        richTextRenderOptions = richTextRenderOptions,
+        richTextDecorations = richTextDecorations,
+        markdownAnimationState = markdownAnimationState,
+        astNodeComposer = astBlockNodeComposer,
+      )
+    }
+  } else {
+    RecursiveRenderMarkdownAst(
+      astNode = astNode,
+      contentOverride = contentOverride,
+      inlineContentOverride = inlineContentOverride,
+      richTextRenderOptions = richTextRenderOptions,
+      richTextDecorations = richTextDecorations,
+      markdownAnimationState = markdownAnimationState,
+      astNodeComposer = astBlockNodeComposer,
+    )
+  }
 }
 
 /**
@@ -238,46 +263,59 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
     markdownAnimationState: MarkdownAnimationState,
     visitChildren: @Composable (AstNode) -> Unit
   ) {
+    val compatibilityDirection = remember(astNode) {
+      if (richTextRenderOptions.enableRtlCompatibility) {
+        when (astNode.type) {
+          is AstBlockQuote,
+          is AstIndentedCodeBlock,
+          is AstFencedCodeBlock -> astNode
+          is AstUnorderedList,
+          is AstOrderedList -> astNode.links.firstChild
+          else -> null
+        }?.firstStrongTextDirectionInFirstLine()
+      } else {
+        null
+      }
+    }
+
     when (val astNodeType = astNode.type) {
       is AstDocument -> visitChildren(astNode)
       is AstBlockQuote -> {
         BlockQuote(
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
+          gutterDirection = compatibilityDirection,
         ) {
-          visitChildren(astNode)
-        }
-      }
-
-      is AstUnorderedList -> {
-        FormattedList(
-          listType = Unordered,
-          markdownAnimationState = markdownAnimationState,
-          richTextRenderOptions = richTextRenderOptions,
-          items = astNode.filterChildrenType<AstListItem>().toList()
-        ) { astListItem ->
-          // if this list item has no child, it should at least emit a single pixel layout.
-          if (astListItem.links.firstChild == null) {
-            BasicText("")
-          } else {
-            visitChildren(astListItem)
+          CompositionLocalProvider(
+            LocalCompatibilityTextAlignOverride provides compatibilityDirection.toCompatibilityTextAlign(),
+          ) {
+            visitChildren(astNode)
           }
         }
       }
 
+      is AstUnorderedList,
       is AstOrderedList -> {
+        val items = remember(astNode) {
+          astNode.childrenSequence().toList()
+        }
         FormattedList(
-          listType = Ordered,
+          listType = if (astNodeType is AstOrderedList) Ordered else Unordered,
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
-          items = astNode.childrenSequence().toList(),
-          startIndex = astNodeType.startNumber - 1,
+          items = items,
+          startIndex = if (astNodeType is AstOrderedList) astNodeType.startNumber - 1 else 0,
+          markerDirection = compatibilityDirection,
         ) { astListItem ->
-          // if this list item has no child, it should at least emit a single pixel layout.
-          if (astListItem.links.firstChild == null) {
-            BasicText("")
-          } else {
-            visitChildren(astListItem)
+          CompositionLocalProvider(
+            LocalCompatibilityTextAlignOverride provides compatibilityDirection.toCompatibilityTextAlign(),
+          ) {
+            // if this list item has no child, it should at least emit a single pixel layout.
+            if (astListItem.links.firstChild == null) {
+              BasicText("")
+            } else {
+              visitChildren(astListItem)
+            }
           }
         }
       }
@@ -307,6 +345,9 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
           text = astNodeType.literal.trim(),
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
+          modifier = if (compatibilityDirection != null) Modifier.fillMaxWidth() else Modifier,
+          textDirection = compatibilityDirection.toCompatibilityTextDirection(),
+          textAlign = compatibilityDirection.toCompatibilityTextAlign(),
         )
       }
 
@@ -315,6 +356,9 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
           text = astNodeType.literal.trim(),
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
+          modifier = if (compatibilityDirection != null) Modifier.fillMaxWidth() else Modifier,
+          textDirection = compatibilityDirection.toCompatibilityTextDirection(),
+          textAlign = compatibilityDirection.toCompatibilityTextAlign(),
         )
       }
 

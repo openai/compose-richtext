@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
@@ -26,6 +27,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import com.halilibo.richtext.ui.ListType.Ordered
 import com.halilibo.richtext.ui.ListType.Unordered
+import com.halilibo.richtext.ui.rtl.shouldFillWidthForRtlCompatibility
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
 import kotlin.math.max
@@ -79,7 +81,10 @@ public fun RichTextScope.textOrderedMarkers(
   vararg markers: (index: Int) -> String
 ): OrderedMarkers =
   OrderedMarkers { level, index ->
-    Text(markers[level % markers.size](index))
+    Text(
+      text = markers[level % markers.size](index),
+      textDirection = LocalOrderedMarkerTextDirection.current,
+    )
   }
 
 /**
@@ -172,6 +177,7 @@ internal fun ListStyle.resolveDefaults(): ListStyle = ListStyle(
 )
 
 private val LocalListLevel = compositionLocalOf { 0 }
+private val LocalOrderedMarkerTextDirection = compositionLocalOf<TextDirection?> { null }
 
 /**
  * Composes [children] with their [LocalListLevel] reset back to 0.
@@ -193,7 +199,12 @@ private val LocalListLevel = compositionLocalOf { 0 }
 @Composable public inline fun RichTextScope.FormattedList(
   listType: ListType,
   vararg children: @Composable RichTextScope.() -> Unit
-): Unit = FormattedList(listType, items = children.asList(), startIndex = 0) { it() }
+): Unit = FormattedList(
+  listType = listType,
+  items = children.asList(),
+  startIndex = 0,
+  markerDirection = null,
+) { it() }
 
 /**
  * Creates a formatted list such as a bullet list or numbered list.
@@ -207,6 +218,7 @@ private val LocalListLevel = compositionLocalOf { 0 }
   richTextRenderOptions: RichTextRenderOptions = RichTextRenderOptions(),
   items: List<T>,
   startIndex: Int = 0,
+  markerDirection: TextDirection? = null,
   drawItem: @Composable RichTextScope.(T) -> Unit
 ) {
   val listStyle = currentRichTextStyle.resolveDefaults().listStyle!!
@@ -215,17 +227,32 @@ private val LocalListLevel = compositionLocalOf { 0 }
   val contentsIndent = with(density) { listStyle.contentsIndent!!.toDp() }
   val itemSpacing = with(density) { listStyle.itemSpacing!!.toDp() }
   val currentLevel = LocalListLevel.current
+  val orderedMarkerTextDirection = if (
+    richTextRenderOptions.enableRtlCompatibility &&
+    listType == Ordered &&
+    markerDirection != null
+  ) {
+    TextDirection.Ltr
+  } else {
+    null
+  }
 
   PrefixListLayout(
     count = items.size,
     itemSpacing = itemSpacing,
     prefixPadding = PaddingValues(start = markerIndent, end = contentsIndent),
+    richTextRenderOptions = richTextRenderOptions,
+    markerDirection = markerDirection,
     prefixForIndex = { index ->
       val alpha = rememberMarkdownFade(richTextRenderOptions, markdownAnimationState)
-      Box(modifier = Modifier.graphicsLayer { this.alpha = alpha.value }) {
-        when (listType) {
-          Ordered -> listStyle.orderedMarkers!!().drawMarker(currentLevel, startIndex + index)
-          Unordered -> listStyle.unorderedMarkers!!().drawMarker(currentLevel)
+      CompositionLocalProvider(
+        LocalOrderedMarkerTextDirection provides orderedMarkerTextDirection,
+      ) {
+        Box(modifier = Modifier.graphicsLayer { this.alpha = alpha.value }) {
+          when (listType) {
+            Ordered -> listStyle.orderedMarkers!!().drawMarker(currentLevel, startIndex + index)
+            Unordered -> listStyle.unorderedMarkers!!().drawMarker(currentLevel)
+          }
         }
       }
     },
@@ -245,6 +272,8 @@ private val LocalListLevel = compositionLocalOf { 0 }
   count: Int,
   itemSpacing: Dp,
   prefixPadding: PaddingValues,
+  richTextRenderOptions: RichTextRenderOptions,
+  markerDirection: TextDirection?,
   prefixForIndex: @Composable (index: Int) -> Unit,
   itemForIndex: @Composable (index: Int) -> Unit
 ) {
@@ -279,16 +308,31 @@ private val LocalListLevel = compositionLocalOf { 0 }
     val widestPrefix = prefixPlaceables.maxByOrNull { it.width }!!
 
     // Then measure the items, offset to the right to allow space for the prefixes and gap.
-    val itemConstraints = constraints.copy(
-      maxWidth = (constraints.maxWidth - widestPrefix.width).coerceAtLeast(0)
-    )
+    val itemConstraints =
+      if (constraints.maxWidth == Constraints.Infinity) {
+        constraints
+      } else {
+        constraints.copy(
+          maxWidth = (constraints.maxWidth - widestPrefix.width).coerceAtLeast(0)
+        )
+      }
     val itemPlaceables = itemMeasurables.map { item ->
       item.measure(itemConstraints)
     }
       .toList()
     val widestItem = itemPlaceables.maxByOrNull { it.width }!!
 
-    val listWidth = widestPrefix.width + widestItem.width
+    val listWidth =
+      if (
+        richTextRenderOptions.enableRtlCompatibility &&
+        constraints.hasBoundedWidth &&
+        constraints.maxWidth != Constraints.Infinity &&
+        shouldFillWidthForRtlCompatibility(richTextRenderOptions, markerDirection)
+      ) {
+        constraints.maxWidth
+      } else {
+        widestPrefix.width + widestItem.width
+      }
     val itemsHeight = itemPlaceables.sumOf { it.height } +
         (itemPlaceables.size - 1) * itemSpacing.roundToPx()
     val prefixesHeight = prefixPlaceables.sumOf { it.height } +
@@ -297,24 +341,35 @@ private val LocalListLevel = compositionLocalOf { 0 }
     val listHeight = maxOf(itemsHeight, prefixesHeight)
     layout(listWidth, listHeight) {
       var y = 0
+      val markerOnRight = markerDirection == TextDirection.Rtl
 
       // Flow the rows vertically, much like Column.
       for (i in 0 until count) {
         val prefix = prefixPlaceables[i]
         val item = itemPlaceables[i]
         val rowHeight = max(prefix.height, item.height) + itemSpacing.roundToPx()
-        val size = IntSize(
-          width = widestPrefix.width - prefix.width,
-          height = rowHeight - prefix.height
-        )
-        val prefixOffset = Alignment.TopEnd.align(
-          size = size,
-          space = size,
-          layoutDirection = layoutDirection
-        )
+        if (richTextRenderOptions.enableRtlCompatibility && markerDirection != null) {
+          if (markerOnRight) {
+            item.place(0, y)
+            prefix.place(listWidth - prefix.width, y)
+          } else {
+            prefix.place(0, y)
+            item.place(widestPrefix.width, y)
+          }
+        } else {
+          val size = IntSize(
+            width = widestPrefix.width - prefix.width,
+            height = rowHeight - prefix.height
+          )
+          val prefixOffset = Alignment.TopEnd.align(
+            size = size,
+            space = size,
+            layoutDirection = layoutDirection
+          )
 
-        prefix.placeRelative(prefixOffset.x, y + prefixOffset.y)
-        item.placeRelative(widestPrefix.width, y)
+          prefix.placeRelative(prefixOffset.x, y + prefixOffset.y)
+          item.placeRelative(widestPrefix.width, y)
+        }
         y += rowHeight
       }
     }
