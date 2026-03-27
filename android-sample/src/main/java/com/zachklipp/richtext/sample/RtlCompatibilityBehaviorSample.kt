@@ -4,8 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -46,15 +44,15 @@ private fun QuoteBehaviorPreview() {
 private fun ListBehaviorPreview() {
   BehaviorPreviewSurface {
     BehaviorPreviewColumn {
-      ComparisonSection(
+      BehaviorSection(
         title = "English first item keeps bullets on the left",
         markdown = englishStartingListMarkdown,
       )
-      ComparisonSection(
+      BehaviorSection(
         title = "Hebrew first item keeps bullets on the right",
         markdown = hebrewStartingListMarkdown,
       )
-      ComparisonSection(
+      BehaviorSection(
         title = "Neutral first item falls back to the system side",
         markdown = neutralStartingListMarkdown,
       )
@@ -67,125 +65,13 @@ private fun ListBehaviorPreview() {
 private fun CodeWidthBehaviorPreview() {
   BehaviorPreviewSurface {
     BehaviorPreviewColumn {
-      ComparisonSection(
-        title = "English code expands to the paragraph width",
+      BehaviorSection(
+        title = "English code keeps the same width",
         markdown = englishCodeMarkdown,
       )
-      ComparisonSection(
-        title = "Hebrew code expands and aligns from the right",
-        markdown = hebrewCodeMarkdown,
-      )
-      ComparisonSection(
-        title = "Symbols-only code keeps ambient width",
+      BehaviorSection(
+        title = "Symbols-only code keeps the same width",
         markdown = symbolsCodeMarkdown,
-      )
-    }
-  }
-}
-
-@Preview(name = "RTL hebrew code focused · he-IL", locale = "he-rIL", widthDp = 412, showBackground = true)
-@Composable
-private fun HebrewCodeFocusedPreview() {
-  BehaviorPreviewSurface {
-    BehaviorPreviewColumn {
-      ComparisonSection(
-        title = "Hebrew code expands and aligns from the right",
-        markdown = hebrewCodeMarkdown,
-      )
-    }
-  }
-}
-
-@Preview(name = "LTR hebrew-only code focused · en-US", locale = "en-rUS", widthDp = 412, showBackground = true)
-@Composable
-private fun HebrewOnlyCodeLtrFocusedPreview() {
-  BehaviorPreviewSurface(layoutDirection = LayoutDirection.Ltr) {
-    BehaviorPreviewColumn {
-      ComparisonSection(
-        title = "Hebrew-only code block in LTR UI",
-        markdown = hebrewOnlyCodeMarkdown,
-      )
-    }
-  }
-}
-
-@Preview(name = "RTL hebrew-only code focused · he-IL", locale = "he-rIL", widthDp = 412, showBackground = true)
-@Composable
-private fun HebrewOnlyCodeRtlFocusedPreview() {
-  BehaviorPreviewSurface {
-    BehaviorPreviewColumn {
-      ComparisonSection(
-        title = "Hebrew-only code block in RTL UI",
-        markdown = hebrewOnlyCodeMarkdown,
-      )
-    }
-  }
-}
-
-@Preview(name = "RTL english code width focused · he-IL", locale = "he-rIL", widthDp = 412, showBackground = true)
-@Composable
-private fun EnglishCodeWidthFocusedPreview() {
-  BehaviorPreviewSurface {
-    BehaviorPreviewColumn {
-      ComparisonSection(
-        title = "English code expands to the paragraph width",
-        markdown = englishCodeMarkdown,
-      )
-    }
-  }
-}
-
-@Preview(name = "RTL english code alignment focused · he-IL", locale = "he-rIL", widthDp = 412, showBackground = true)
-@Composable
-private fun EnglishCodeAlignmentFocusedPreview() {
-  BehaviorPreviewSurface {
-    BehaviorPreviewColumn {
-      ComparisonSection(
-        title = "English-first code line stays left-aligned in RTL content",
-        markdown = englishCodeAlignmentMarkdown,
-      )
-    }
-  }
-}
-
-@Preview(name = "RTL symbols code focused · he-IL", locale = "he-rIL", widthDp = 412, showBackground = true)
-@Composable
-private fun SymbolsCodeFocusedPreview() {
-  BehaviorPreviewSurface {
-    BehaviorPreviewColumn {
-      ComparisonSection(
-        title = "Symbols-only code keeps ambient width",
-        markdown = symbolsCodeMarkdown,
-      )
-    }
-  }
-}
-
-@Preview(name = "RTL list focused · he-IL", locale = "he-rIL", widthDp = 412, showBackground = true)
-@Composable
-private fun ListFocusedPreview() {
-  BehaviorPreviewSurface {
-    BehaviorPreviewColumn {
-      ComparisonSection(
-        title = "Hebrew first item keeps bullets on the right",
-        markdown = hebrewStartingListMarkdown,
-      )
-    }
-  }
-}
-
-@Preview(name = "RTL neutral item behavior · he-IL", locale = "he-rIL", widthDp = 412, showBackground = true)
-@Composable
-private fun NeutralItemBehaviorPreview() {
-  BehaviorPreviewSurface {
-    BehaviorPreviewColumn {
-      ComparisonSection(
-        title = "Small neutral paragraph does not expand",
-        markdown = neutralParagraphMarkdown,
-      )
-      ComparisonSection(
-        title = "Single strong paragraph does not expand by itself",
-        markdown = singleStrongParagraphMarkdown,
       )
     }
   }
@@ -210,12 +96,11 @@ private fun DocumentWidthBehaviorPreview() {
 
 @Composable
 private fun BehaviorPreviewSurface(
-  layoutDirection: LayoutDirection = LayoutDirection.Rtl,
   content: @Composable () -> Unit,
 ) {
   SampleTheme {
     Surface {
-      CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
+      CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         content()
       }
     }
@@ -249,80 +134,19 @@ private fun BehaviorSection(
       text = title,
       style = MaterialTheme.typography.labelLarge,
     )
-    BehaviorCard {
-      BehaviorMarkdown(markdown = markdown)
-    }
+    BehaviorMarkdown(markdown = markdown)
   }
 }
 
-/** Renders the same markdown with compatibility disabled and enabled for side-by-side review. */
-@Composable
-private fun ComparisonSection(
-  title: String,
-  markdown: String,
-) {
-  Column(
-    modifier = Modifier.fillMaxWidth(),
-    verticalArrangement = Arrangement.spacedBy(8.dp),
-  ) {
-    Text(
-      text = title,
-      style = MaterialTheme.typography.labelLarge,
-    )
-    Text(
-      text = "compatibility off",
-      style = MaterialTheme.typography.bodySmall,
-    )
-    BehaviorCard {
-      BehaviorMarkdown(
-        markdown = markdown,
-        enableRtlCompatibility = false,
-      )
-    }
-    Text(
-      text = "compatibility on",
-      style = MaterialTheme.typography.bodySmall,
-    )
-    BehaviorCard {
-      BehaviorMarkdown(
-        markdown = markdown,
-        enableRtlCompatibility = true,
-      )
-    }
-  }
-}
-
-/** Renders one markdown example using the requested RTL compatibility mode. */
 @Composable
 private fun BehaviorMarkdown(
   markdown: String,
-  enableRtlCompatibility: Boolean = true,
 ) {
-  RichText {
+  RichText(modifier = Modifier.fillMaxWidth()) {
     Markdown(
       content = markdown,
-      richtextRenderOptions = RichTextRenderOptions(
-        enableRtlCompatibility = enableRtlCompatibility,
-      ),
+      richtextRenderOptions = RichTextRenderOptions(),
     )
-  }
-}
-
-@Composable
-private fun BehaviorCard(
-  content: @Composable () -> Unit,
-) {
-  Card(
-    colors = CardDefaults.cardColors(
-      containerColor = MaterialTheme.colorScheme.surfaceVariant,
-    ),
-  ) {
-    Column(
-      modifier = Modifier
-        .padding(16.dp),
-    ) {
-      content()
-    }
   }
 }
 
@@ -356,8 +180,6 @@ private val neutralStartingListMarkdown = """
 """.trimIndent()
 
 private val englishCodeMarkdown = """
-  This paragraph is intentionally much wider than the code block below so compatibility mode has a document width to align against.
-
   ```kotlin
   val total = value + 42
   println("A/B -> ${'$'}total")
@@ -365,46 +187,9 @@ private val englishCodeMarkdown = """
 """.trimIndent()
 
 private val symbolsCodeMarkdown = """
-  This paragraph is intentionally much wider than the symbols-only code block below.
-
   ```
   () [] {} <> / == -> ++
   ```
-""".trimIndent()
-
-private val hebrewCodeMarkdown = """
-  הפסקה הזאת רחבה בכוונה יותר מבלוק הקוד שמתחתיה כדי לוודא שמצב התאימות משתמש ברוחב המסמך.
-
-  ```kotlin
-  val hebrew = "שלום"
-  println(hebrew)
-  ```
-""".trimIndent()
-
-private val hebrewOnlyCodeMarkdown = """
-  הפסקה הזאת רחבה בכוונה יותר מבלוק הקוד שמתחתיה כדי שרוחב המסמך יהיה ברור גם כשכל שורות הקוד בעברית.
-
-  ```
-  שלום
-  להתראות
-  ```
-""".trimIndent()
-
-private val englishCodeAlignmentMarkdown = """
-  הפסקה הזאת רחבה בכוונה יותר מבלוק הקוד שמתחתיה כדי שרוחב המסמך יהיה ברור גם כשהשורה הראשונה באנגלית.
-
-  ```kotlin
-  val x = 1
-  println(x)
-  ```
-""".trimIndent()
-
-private val neutralParagraphMarkdown = """
-  12345
-""".trimIndent()
-
-private val singleStrongParagraphMarkdown = """
-  word
 """.trimIndent()
 
 private val englishDocumentWithOrderedListMarkdown = """
