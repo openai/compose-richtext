@@ -281,7 +281,7 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
           is AstUnorderedList,
           is AstOrderedList -> astNode.childrenSequence().firstOrNull()
           else -> null
-        }?.firstStrongTextDirectionInFirstLine()
+        }?.firstStrongTextDirectionInSubtree()
       }
     } else {
       null

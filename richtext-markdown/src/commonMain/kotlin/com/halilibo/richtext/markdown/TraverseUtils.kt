@@ -61,29 +61,6 @@ internal fun AstNode.firstStrongTextDirectionInSubtree(): TextDirection? {
   }
 }
 
-internal fun AstNode.firstStrongTextDirectionInFirstLine(): TextDirection? {
-  var lineEnded = false
-
-  fun AstNode.findFirstStrongTextDirection(): TextDirection? {
-    if (lineEnded) return null
-
-    if (type is AstSoftLineBreak || type is AstHardLineBreak) {
-      lineEnded = true
-      return null
-    }
-
-    return findNodeTypeFirstStrongTextDirection(
-      nodeType = type,
-      stopAtLineBreak = true,
-      onLineBreak = { lineEnded = true },
-    ) ?: childrenSequence().firstNotNullOfOrNull { child ->
-      child.findFirstStrongTextDirection()
-    }
-  }
-
-  return findFirstStrongTextDirection()
-}
-
 internal fun TextDirection?.toCompatibilityTextAlign(): TextAlign? = when (this) {
   TextDirection.Ltr -> TextAlign.Left
   TextDirection.Rtl -> TextAlign.Right
@@ -91,17 +68,10 @@ internal fun TextDirection?.toCompatibilityTextAlign(): TextAlign? = when (this)
 }
 
 internal fun CharSequence.firstStrongTextDirection(
-  stopAtLineBreak: Boolean = false,
   ignoreHtmlTags: Boolean = false,
-  onLineBreak: () -> Unit = {},
 ): TextDirection? {
   var insideHtmlTag = false
   for (char in this) {
-    if (stopAtLineBreak && (char == '\n' || char == '\r')) {
-      onLineBreak()
-      return null
-    }
-
     when {
       ignoreHtmlTags && char == '<' -> insideHtmlTag = true
       ignoreHtmlTags && insideHtmlTag && char == '>' -> insideHtmlTag = false
@@ -126,8 +96,6 @@ internal fun CharSequence.firstStrongTextDirection(
 
 private fun findNodeTypeFirstStrongTextDirection(
   nodeType: AstNodeType,
-  stopAtLineBreak: Boolean = false,
-  onLineBreak: () -> Unit = {},
 ): TextDirection? {
   val literal = when (nodeType) {
     is AstText -> nodeType.literal
@@ -140,8 +108,6 @@ private fun findNodeTypeFirstStrongTextDirection(
   }
 
   return literal.firstStrongTextDirection(
-    stopAtLineBreak = stopAtLineBreak,
     ignoreHtmlTags = nodeType is AstHtmlBlock || nodeType is AstHtmlInline,
-    onLineBreak = onLineBreak,
   )
 }
