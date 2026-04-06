@@ -44,7 +44,6 @@ import com.halilibo.richtext.ui.HorizontalRule
 import com.halilibo.richtext.ui.ListType.Ordered
 import com.halilibo.richtext.ui.ListType.Unordered
 import com.halilibo.richtext.ui.RichTextScope
-import com.halilibo.richtext.ui.string.InlineContent
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
 import com.halilibo.richtext.ui.string.RichTextDecorations
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
@@ -363,11 +362,7 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
       }
 
       is AstHtmlBlock -> {
-        Text(text = richTextString {
-          appendInlineContent(content = InlineContent {
-            HtmlBlock(astNodeType.literal)
-          })
-        })
+        HtmlBlock(astNodeType.literal)
       }
 
       is AstLinkReferenceDefinition -> {
