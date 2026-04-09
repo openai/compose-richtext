@@ -1,13 +1,12 @@
 package com.halilibo.richtext.markdown
 
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import com.halilibo.richtext.markdown.rtl.LocalCompatibilityTextAlignOverride
@@ -95,29 +94,79 @@ public fun RichTextScope.BasicMarkdown(
 ) {
   val markdownAnimationState = remember { MarkdownAnimationState() }
 
-  if (richTextRenderOptions.enableRtlCompatibility && astNode.type is AstDocument) {
-    BasicRichText(modifier = Modifier.width(IntrinsicSize.Max)) {
-      RecursiveRenderMarkdownAst(
-        astNode = astNode,
-        contentOverride = contentOverride,
-        inlineContentOverride = inlineContentOverride,
-        richTextRenderOptions = richTextRenderOptions,
-        richTextDecorations = richTextDecorations,
-        markdownAnimationState = markdownAnimationState,
-        astNodeComposer = astBlockNodeComposer,
-      )
-    }
-  } else {
+  @Composable
+  fun RenderMarkdown(renderOptions: RichTextRenderOptions) {
     RecursiveRenderMarkdownAst(
       astNode = astNode,
       contentOverride = contentOverride,
       inlineContentOverride = inlineContentOverride,
-      richTextRenderOptions = richTextRenderOptions,
+      richTextRenderOptions = renderOptions,
       richTextDecorations = richTextDecorations,
       markdownAnimationState = markdownAnimationState,
       astNodeComposer = astBlockNodeComposer,
     )
   }
+
+  if (richTextRenderOptions.enableRtlCompatibility && astNode.type is AstDocument) {
+    val measureRenderOptions = remember(richTextRenderOptions) {
+      richTextRenderOptions.copy(
+        animate = false,
+        enableRtlCompatibility = false,
+      )
+    }
+    RtlCompatibilityDocument(
+      measureContent = {
+        BasicRichText {
+          RenderMarkdown(measureRenderOptions)
+        }
+      },
+      content = {
+        BasicRichText {
+          RenderMarkdown(richTextRenderOptions)
+        }
+      },
+    )
+  } else {
+    RenderMarkdown(richTextRenderOptions)
+  }
+}
+
+@Composable
+private fun RtlCompatibilityDocument(
+  measureContent: @Composable () -> Unit,
+  content: @Composable () -> Unit,
+) {
+  SubcomposeLayout { constraints ->
+    val measureConstraints = constraints.copy(minWidth = 0, minHeight = 0)
+    val measuredWidth = subcompose(RtlCompatibilityDocumentSlot.Measure, measureContent)
+      .map { measurable -> measurable.measure(measureConstraints) }
+      .maxOfOrNull { placeable -> placeable.width }
+      ?.coerceIn(constraints.minWidth, constraints.maxWidth)
+      ?: constraints.minWidth
+
+    val contentConstraints = constraints.copy(
+      minWidth = measuredWidth,
+      maxWidth = measuredWidth,
+      minHeight = 0,
+    )
+    val contentPlaceables = subcompose(RtlCompatibilityDocumentSlot.Content, content)
+      .map { measurable -> measurable.measure(contentConstraints) }
+    val height = contentPlaceables
+      .maxOfOrNull { placeable -> placeable.height }
+      ?.coerceIn(constraints.minHeight, constraints.maxHeight)
+      ?: constraints.minHeight
+
+    layout(measuredWidth, height) {
+      contentPlaceables.forEach { placeable ->
+        placeable.placeRelative(0, 0)
+      }
+    }
+  }
+}
+
+private enum class RtlCompatibilityDocumentSlot {
+  Measure,
+  Content,
 }
 
 /**
