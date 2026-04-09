@@ -94,6 +94,20 @@ private fun DocumentWidthBehaviorPreview() {
   }
 }
 
+@Preview(name = "RTL compatibility table · he-IL", locale = "he-rIL", widthDp = 412, showBackground = true)
+@Composable
+private fun TableCompatibilityPreview() {
+  BehaviorPreviewSurface {
+    BehaviorPreviewColumn {
+      BehaviorSection(
+        title = "Markdown table renders with RTL compatibility enabled",
+        markdown = tableMarkdown,
+        richTextRenderOptions = RichTextRenderOptions(enableRtlCompatibility = true),
+      )
+    }
+  }
+}
+
 @Composable
 private fun BehaviorPreviewSurface(
   content: @Composable () -> Unit,
@@ -125,6 +139,7 @@ private fun BehaviorPreviewColumn(
 private fun BehaviorSection(
   title: String,
   markdown: String,
+  richTextRenderOptions: RichTextRenderOptions = RichTextRenderOptions(),
 ) {
   Column(
     modifier = Modifier.fillMaxWidth(),
@@ -134,18 +149,22 @@ private fun BehaviorSection(
       text = title,
       style = MaterialTheme.typography.labelLarge,
     )
-    BehaviorMarkdown(markdown = markdown)
+    BehaviorMarkdown(
+      markdown = markdown,
+      richTextRenderOptions = richTextRenderOptions,
+    )
   }
 }
 
 @Composable
 private fun BehaviorMarkdown(
   markdown: String,
+  richTextRenderOptions: RichTextRenderOptions,
 ) {
   RichText(modifier = Modifier.fillMaxWidth()) {
     Markdown(
       content = markdown,
-      richtextRenderOptions = RichTextRenderOptions(),
+      richtextRenderOptions = richTextRenderOptions,
     )
   }
 }
@@ -214,4 +233,15 @@ private val hebrewDocumentWithOrderedListMarkdown = """
   5. Head Shaking Horizontally
 
   למידע מפורט יותר על האימוג׳ים החדשים והמשמעויות שלהם אפשר לעיין ב-Emojipedia או במקורות נוספים.
+""".trimIndent()
+
+private val tableMarkdown = """
+  פסקה בעברית לפני הטבלה.
+
+  | כותרת | Status |
+  | --- | --- |
+  | שלום | Ready |
+  | עברית ואז English | Works |
+
+  English paragraph after the table.
 """.trimIndent()
