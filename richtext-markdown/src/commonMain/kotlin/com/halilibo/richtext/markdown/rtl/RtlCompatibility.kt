@@ -18,7 +18,6 @@ import com.halilibo.richtext.markdown.node.AstIndentedCodeBlock
 import com.halilibo.richtext.markdown.node.AstNode
 import com.halilibo.richtext.markdown.node.AstSoftLineBreak
 import com.halilibo.richtext.markdown.node.AstText
-import com.halilibo.richtext.ui.string.RichTextRenderOptions
 import kotlin.text.CharDirectionality
 
 /**
@@ -86,10 +85,10 @@ internal fun TextDirection?.toCompatibilityTextDirection(): TextDirection? = whe
 
 @Composable
 internal fun Modifier.fillMaxWidthForRtlCompatibility(
-  renderOptions: RichTextRenderOptions,
+  enableRtlCompatibility: Boolean,
   contentDirection: TextDirection?,
 ): Modifier = if (
-  renderOptions.enableRtlCompatibility &&
+  enableRtlCompatibility &&
   contentDirection.isOppositeOf(LocalLayoutDirection.current)
 ) {
   fillMaxWidth()

@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import com.halilibo.richtext.ui.rtl.fillMaxWidthForRtlCompatibility
+import com.halilibo.richtext.ui.rtl.toCompatibilityDirection
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
 
@@ -84,7 +85,7 @@ internal fun CodeBlockStyle.resolveDefaults() = CodeBlockStyle(
     Text(
       text = text,
       modifier = Modifier.fillMaxWidthForRtlCompatibility(
-        renderOptions = richTextRenderOptions,
+        enableRtlCompatibility = richTextRenderOptions.enableRtlCompatibility,
         contentDirection = compatibilityDirection,
       ),
       textAlign = textAlign,
@@ -126,7 +127,7 @@ internal fun CodeBlockStyle.resolveDefaults() = CodeBlockStyle(
         .graphicsLayer{ this.alpha = alpha.value }
         .then(
           modifier.fillMaxWidthForRtlCompatibility(
-            renderOptions = richTextRenderOptions,
+            enableRtlCompatibility = richTextRenderOptions.enableRtlCompatibility,
             contentDirection = compatibilityDirection,
           )
         )
@@ -148,9 +149,3 @@ internal expect fun RichTextScope.CodeBlockLayout(
   wordWrap: Boolean,
   children: @Composable RichTextScope.(Modifier) -> Unit
 )
-
-private fun TextAlign?.toCompatibilityDirection(): TextDirection? = when (this) {
-  TextAlign.Left -> TextDirection.Ltr
-  TextAlign.Right -> TextDirection.Rtl
-  else -> null
-}

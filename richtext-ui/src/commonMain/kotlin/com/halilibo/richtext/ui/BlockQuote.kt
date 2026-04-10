@@ -108,7 +108,7 @@ public interface BlockQuoteGutter {
       .let {
         if (
           shouldFillWidthForRtlCompatibility(
-            renderOptions = richTextRenderOptions,
+            enableRtlCompatibility = richTextRenderOptions.enableRtlCompatibility,
             contentDirection = gutterDirection,
             layoutDirection = layoutDirection,
           ) &&

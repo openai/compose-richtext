@@ -241,7 +241,7 @@ private val LocalOrderedMarkerTextDirection = compositionLocalOf<TextDirection?>
     count = items.size,
     itemSpacing = itemSpacing,
     prefixPadding = PaddingValues(start = markerIndent, end = contentsIndent),
-    richTextRenderOptions = richTextRenderOptions,
+    enableRtlCompatibility = richTextRenderOptions.enableRtlCompatibility,
     markerDirection = markerDirection,
     prefixForIndex = { index ->
       val alpha = rememberMarkdownFade(richTextRenderOptions, markdownAnimationState)
@@ -272,7 +272,7 @@ private val LocalOrderedMarkerTextDirection = compositionLocalOf<TextDirection?>
   count: Int,
   itemSpacing: Dp,
   prefixPadding: PaddingValues,
-  richTextRenderOptions: RichTextRenderOptions,
+  enableRtlCompatibility: Boolean,
   markerDirection: TextDirection?,
   prefixForIndex: @Composable (index: Int) -> Unit,
   itemForIndex: @Composable (index: Int) -> Unit
@@ -326,7 +326,7 @@ private val LocalOrderedMarkerTextDirection = compositionLocalOf<TextDirection?>
       if (
         constraints.hasBoundedWidth &&
         constraints.maxWidth != Constraints.Infinity &&
-        shouldFillWidthForRtlCompatibility(richTextRenderOptions, markerDirection, layoutDirection)
+        shouldFillWidthForRtlCompatibility(enableRtlCompatibility, markerDirection, layoutDirection)
       ) {
         constraints.maxWidth
       } else {
@@ -347,7 +347,7 @@ private val LocalOrderedMarkerTextDirection = compositionLocalOf<TextDirection?>
         val prefix = prefixPlaceables[i]
         val item = itemPlaceables[i]
         val rowHeight = max(prefix.height, item.height) + itemSpacing.roundToPx()
-        if (richTextRenderOptions.enableRtlCompatibility && markerDirection != null) {
+        if (enableRtlCompatibility && markerDirection != null) {
           if (markerOnRight) {
             item.place(0, y)
             prefix.place(listWidth - prefix.width, y)

@@ -329,7 +329,7 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
           modifier = Modifier.fillMaxWidthForRtlCompatibility(
-            renderOptions = richTextRenderOptions,
+            enableRtlCompatibility = richTextRenderOptions.enableRtlCompatibility,
             contentDirection = compatibilityDirection,
           ),
           textDirection = compatibilityDirection.toCompatibilityTextDirection(),
@@ -343,7 +343,7 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
           modifier = Modifier.fillMaxWidthForRtlCompatibility(
-            renderOptions = richTextRenderOptions,
+            enableRtlCompatibility = richTextRenderOptions.enableRtlCompatibility,
             contentDirection = compatibilityDirection,
           ),
           textDirection = compatibilityDirection.toCompatibilityTextDirection(),

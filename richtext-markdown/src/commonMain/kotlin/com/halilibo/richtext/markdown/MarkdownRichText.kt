@@ -89,7 +89,7 @@ internal fun RichTextScope.MarkdownRichText(
   Text(
     text = richText,
     modifier = modifier.fillMaxWidthForRtlCompatibility(
-      renderOptions = richTextRenderOptions,
+      enableRtlCompatibility = richTextRenderOptions.enableRtlCompatibility,
       contentDirection = compatibilityDirection,
     ),
     isLeafText = astNode.isLastInTree(),
