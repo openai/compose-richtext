@@ -108,14 +108,14 @@ public fun RichTextScope.BasicMarkdown(
   }
 
   if (richTextRenderOptions.enableRtlCompatibility && astNode.type is AstDocument) {
-    val measureRenderOptions = remember(richTextRenderOptions) {
-      richTextRenderOptions.copy(
-        animate = false,
-        enableRtlCompatibility = false,
-      )
-    }
     RtlCompatibilityDocument(
       measureContent = {
+        val measureRenderOptions = remember(richTextRenderOptions) {
+          richTextRenderOptions.copy(
+            animate = false,
+            enableRtlCompatibility = false,
+          )
+        }
         BasicRichText {
           RenderMarkdown(measureRenderOptions)
         }
@@ -137,12 +137,16 @@ private fun RtlCompatibilityDocument(
   content: @Composable () -> Unit,
 ) {
   SubcomposeLayout { constraints ->
-    val measureConstraints = constraints.copy(minWidth = 0, minHeight = 0)
-    val measuredWidth = subcompose(RtlCompatibilityDocumentSlot.Measure, measureContent)
-      .map { measurable -> measurable.measure(measureConstraints) }
-      .maxOfOrNull { placeable -> placeable.width }
-      ?.coerceIn(constraints.minWidth, constraints.maxWidth)
-      ?: constraints.minWidth
+    val measuredWidth = if (constraints.hasBoundedWidth) {
+      constraints.maxWidth
+    } else {
+      val measureConstraints = constraints.copy(minWidth = 0, minHeight = 0)
+      subcompose(RtlCompatibilityDocumentSlot.Measure, measureContent)
+        .map { measurable -> measurable.measure(measureConstraints) }
+        .maxOfOrNull { placeable -> placeable.width }
+        ?.coerceIn(constraints.minWidth, constraints.maxWidth)
+        ?: constraints.minWidth
+    }
 
     val contentConstraints = constraints.copy(
       minWidth = measuredWidth,
