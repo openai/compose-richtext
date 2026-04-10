@@ -94,6 +94,19 @@ private fun DocumentWidthBehaviorPreview() {
   }
 }
 
+@Preview(name = "RTL table behavior · he-IL", locale = "he-rIL", widthDp = 412, showBackground = true)
+@Composable
+private fun TableBehaviorPreview() {
+  BehaviorPreviewSurface {
+    BehaviorPreviewColumn {
+      BehaviorSection(
+        title = "Markdown table renders in RTL layout",
+        markdown = tableMarkdown,
+      )
+    }
+  }
+}
+
 @Composable
 private fun BehaviorPreviewSurface(
   content: @Composable () -> Unit,
@@ -214,4 +227,15 @@ private val hebrewDocumentWithOrderedListMarkdown = """
   5. Head Shaking Horizontally
 
   למידע מפורט יותר על האימוג׳ים החדשים והמשמעויות שלהם אפשר לעיין ב-Emojipedia או במקורות נוספים.
+""".trimIndent()
+
+private val tableMarkdown = """
+  פסקה בעברית לפני הטבלה.
+
+  | כותרת | Status |
+  | --- | --- |
+  | שלום | Ready |
+  | עברית ואז English | Works |
+
+  English paragraph after the table.
 """.trimIndent()
