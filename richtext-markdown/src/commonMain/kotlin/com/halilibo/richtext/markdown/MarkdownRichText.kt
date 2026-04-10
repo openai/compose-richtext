@@ -5,11 +5,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.halilibo.richtext.markdown.rtl.LocalCompatibilityTextAlignOverride
 import com.halilibo.richtext.markdown.rtl.firstStrongTextDirection
-import com.halilibo.richtext.markdown.rtl.toCompatibilityTextAlign
 import com.halilibo.richtext.markdown.rtl.toCompatibilityTextDirection
 import com.halilibo.richtext.markdown.node.AstBlockQuote
 import com.halilibo.richtext.markdown.node.AstCode
@@ -85,10 +87,12 @@ internal fun RichTextScope.MarkdownRichText(
     null
   }
   val textDirection = compatibilityDirection.toCompatibilityTextDirection()
+  val layoutDirection = LocalLayoutDirection.current
+  val shouldFillWidth = compatibilityDirection.isOppositeOf(layoutDirection)
 
   Text(
     text = richText,
-    modifier = if (compatibilityDirection != null) {
+    modifier = if (shouldFillWidth) {
       modifier.fillMaxWidth()
     } else {
       modifier
@@ -100,6 +104,12 @@ internal fun RichTextScope.MarkdownRichText(
     textAlign = LocalCompatibilityTextAlignOverride.current,
     textDirection = textDirection,
   )
+}
+
+private fun TextDirection?.isOppositeOf(layoutDirection: LayoutDirection): Boolean = when (this) {
+  TextDirection.Ltr -> layoutDirection == LayoutDirection.Rtl
+  TextDirection.Rtl -> layoutDirection == LayoutDirection.Ltr
+  else -> false
 }
 
 private fun AstNode?.isLastInTree(): Boolean = this?.links?.parent == null ||
