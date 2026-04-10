@@ -102,7 +102,6 @@ private fun TableBehaviorPreview() {
       BehaviorSection(
         title = "Markdown table renders with RTL compatibility enabled",
         markdown = tableMarkdown,
-        richTextRenderOptions = RichTextRenderOptions(enableRtlCompatibility = true),
       )
     }
   }
@@ -139,7 +138,7 @@ private fun BehaviorPreviewColumn(
 private fun BehaviorSection(
   title: String,
   markdown: String,
-  richTextRenderOptions: RichTextRenderOptions = RichTextRenderOptions(),
+  richTextRenderOptions: RichTextRenderOptions = rtlCompatibilityOptions,
 ) {
   Column(
     modifier = Modifier.fillMaxWidth(),
@@ -168,6 +167,8 @@ private fun BehaviorMarkdown(
     )
   }
 }
+
+private val rtlCompatibilityOptions = RichTextRenderOptions(enableRtlCompatibility = true)
 
 private val englishStartingQuoteMarkdown = """
   > English opens this quote.

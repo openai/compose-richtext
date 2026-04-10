@@ -97,8 +97,7 @@ internal fun RichTextScope.MarkdownRichText(
     renderOptions = richTextRenderOptions,
     sharedAnimationState = markdownAnimationState,
     decorations = richTextDecorations,
-    textAlign = LocalCompatibilityTextAlignOverride.current
-      ?: compatibilityDirection.toCompatibilityTextAlign(),
+    textAlign = LocalCompatibilityTextAlignOverride.current,
     textDirection = textDirection,
   )
 }

@@ -117,11 +117,13 @@ private fun MarkdownCaseContent(
     RichText(modifier = Modifier.fillMaxWidth()) {
       Markdown(
         content = markdown,
-        richtextRenderOptions = RichTextRenderOptions(),
+        richtextRenderOptions = rtlCompatibilityOptions,
       )
     }
   }
 }
+
+private val rtlCompatibilityOptions = RichTextRenderOptions(enableRtlCompatibility = true)
 
 private data class PreviewVariant(
   val localeLabel: String,
