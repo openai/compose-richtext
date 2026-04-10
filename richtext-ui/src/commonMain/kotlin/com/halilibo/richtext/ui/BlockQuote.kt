@@ -106,7 +106,14 @@ public interface BlockQuoteGutter {
     val contentsConstraints = constraints
       .offset(horizontal = -gutterWidth)
       .let {
-        if (shouldFillWidthForRtlCompatibility(richTextRenderOptions, gutterDirection) && it.hasBoundedWidth) {
+        if (
+          shouldFillWidthForRtlCompatibility(
+            renderOptions = richTextRenderOptions,
+            contentDirection = gutterDirection,
+            layoutDirection = layoutDirection,
+          ) &&
+          it.hasBoundedWidth
+        ) {
           it.copy(minWidth = it.maxWidth)
         } else {
           it

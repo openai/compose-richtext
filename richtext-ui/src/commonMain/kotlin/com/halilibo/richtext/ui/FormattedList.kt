@@ -324,10 +324,9 @@ private val LocalOrderedMarkerTextDirection = compositionLocalOf<TextDirection?>
 
     val listWidth =
       if (
-        richTextRenderOptions.enableRtlCompatibility &&
         constraints.hasBoundedWidth &&
         constraints.maxWidth != Constraints.Infinity &&
-        shouldFillWidthForRtlCompatibility(richTextRenderOptions, markerDirection)
+        shouldFillWidthForRtlCompatibility(richTextRenderOptions, markerDirection, layoutDirection)
       ) {
         constraints.maxWidth
       } else {

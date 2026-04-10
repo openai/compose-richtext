@@ -1,6 +1,5 @@
 package com.halilibo.richtext.markdown
 
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -9,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import com.halilibo.richtext.markdown.rtl.LocalCompatibilityTextAlignOverride
+import com.halilibo.richtext.markdown.rtl.fillMaxWidthForRtlCompatibility
 import com.halilibo.richtext.markdown.rtl.firstStrongTextDirectionInFirstLine
 import com.halilibo.richtext.markdown.rtl.toCompatibilityTextAlign
 import com.halilibo.richtext.markdown.rtl.toCompatibilityTextDirection
@@ -328,7 +328,10 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
           text = astNodeType.literal.trim(),
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
-          modifier = if (compatibilityDirection != null) Modifier.fillMaxWidth() else Modifier,
+          modifier = Modifier.fillMaxWidthForRtlCompatibility(
+            renderOptions = richTextRenderOptions,
+            contentDirection = compatibilityDirection,
+          ),
           textDirection = compatibilityDirection.toCompatibilityTextDirection(),
           textAlign = compatibilityDirection.toCompatibilityTextAlign(),
         )
@@ -339,7 +342,10 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
           text = astNodeType.literal.trim(),
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
-          modifier = if (compatibilityDirection != null) Modifier.fillMaxWidth() else Modifier,
+          modifier = Modifier.fillMaxWidthForRtlCompatibility(
+            renderOptions = richTextRenderOptions,
+            contentDirection = compatibilityDirection,
+          ),
           textDirection = compatibilityDirection.toCompatibilityTextDirection(),
           textAlign = compatibilityDirection.toCompatibilityTextAlign(),
         )
