@@ -100,7 +100,7 @@ private fun TableBehaviorPreview() {
   BehaviorPreviewSurface {
     BehaviorPreviewColumn {
       BehaviorSection(
-        title = "Markdown table renders with RTL compatibility enabled",
+        title = "Markdown table renders in RTL layout",
         markdown = tableMarkdown,
       )
     }
@@ -138,7 +138,6 @@ private fun BehaviorPreviewColumn(
 private fun BehaviorSection(
   title: String,
   markdown: String,
-  richTextRenderOptions: RichTextRenderOptions = rtlCompatibilityOptions,
 ) {
   Column(
     modifier = Modifier.fillMaxWidth(),
@@ -148,27 +147,21 @@ private fun BehaviorSection(
       text = title,
       style = MaterialTheme.typography.labelLarge,
     )
-    BehaviorMarkdown(
-      markdown = markdown,
-      richTextRenderOptions = richTextRenderOptions,
-    )
+    BehaviorMarkdown(markdown = markdown)
   }
 }
 
 @Composable
 private fun BehaviorMarkdown(
   markdown: String,
-  richTextRenderOptions: RichTextRenderOptions,
 ) {
   RichText(modifier = Modifier.fillMaxWidth()) {
     Markdown(
       content = markdown,
-      richtextRenderOptions = richTextRenderOptions,
+      richtextRenderOptions = RichTextRenderOptions(),
     )
   }
 }
-
-private val rtlCompatibilityOptions = RichTextRenderOptions(enableRtlCompatibility = true)
 
 private val englishStartingQuoteMarkdown = """
   > English opens this quote.
