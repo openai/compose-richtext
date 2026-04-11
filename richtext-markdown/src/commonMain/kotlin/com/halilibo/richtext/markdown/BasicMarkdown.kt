@@ -352,15 +352,11 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
       }
 
       is AstHtmlBlock -> {
-        if (richTextRenderOptions.enableRtlCompatibility) {
-          HtmlBlock(astNodeType.literal)
-        } else {
-          Text(text = richTextString {
-            appendInlineContent(content = InlineContent {
-              HtmlBlock(astNodeType.literal)
-            })
+        Text(text = richTextString {
+          appendInlineContent(content = InlineContent {
+            HtmlBlock(astNodeType.literal)
           })
-        }
+        })
       }
 
       is AstLinkReferenceDefinition -> {
