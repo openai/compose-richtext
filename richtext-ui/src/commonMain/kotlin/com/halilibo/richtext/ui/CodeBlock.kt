@@ -2,7 +2,6 @@ package com.halilibo.richtext.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -17,7 +16,8 @@ import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
-import com.halilibo.richtext.ui.rtl.shouldFillWidthForRtlCompatibility
+import com.halilibo.richtext.ui.rtl.fillMaxWidthForRtlCompatibility
+import com.halilibo.richtext.ui.rtl.toCompatibilityDirection
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
 
@@ -72,6 +72,8 @@ internal fun CodeBlockStyle.resolveDefaults() = CodeBlockStyle(
   textAlign: TextAlign? = null,
   textDirection: TextDirection? = null,
 ) {
+  val compatibilityDirection = textAlign.toCompatibilityDirection()
+
   CodeBlock(
     wordWrap = wordWrap,
     markdownAnimationState = markdownAnimationState,
@@ -82,11 +84,10 @@ internal fun CodeBlockStyle.resolveDefaults() = CodeBlockStyle(
   ) {
     Text(
       text = text,
-      modifier = if (textAlign != null) {
-        Modifier.fillMaxWidth()
-      } else {
-        Modifier
-      },
+      modifier = Modifier.fillMaxWidthForRtlCompatibility(
+        enableRtlCompatibility = richTextRenderOptions.enableRtlCompatibility,
+        contentDirection = compatibilityDirection,
+      ),
       textAlign = textAlign,
       textDirection = textDirection,
     )
@@ -115,6 +116,7 @@ internal fun CodeBlockStyle.resolveDefaults() = CodeBlockStyle(
     codeBlockStyle.padding!!.toDp()
   }
   val resolvedWordWrap = wordWrap ?: codeBlockStyle.wordWrap!!
+  val compatibilityDirection = textAlign.toCompatibilityDirection()
   val alpha = rememberMarkdownFade(richTextRenderOptions, markdownAnimationState)
 
   CodeBlockLayout(
@@ -123,14 +125,12 @@ internal fun CodeBlockStyle.resolveDefaults() = CodeBlockStyle(
     Box(
       modifier = layoutModifier
         .graphicsLayer{ this.alpha = alpha.value }
-        .then(modifier)
-        .let {
-          if (richTextRenderOptions.enableRtlCompatibility && textAlign != null) {
-            it.fillMaxWidth()
-          } else {
-            it
-          }
-        }
+        .then(
+          modifier.fillMaxWidthForRtlCompatibility(
+            enableRtlCompatibility = richTextRenderOptions.enableRtlCompatibility,
+            contentDirection = compatibilityDirection,
+          )
+        )
         .then(blockModifier)
         .padding(blockPadding)
     ) {

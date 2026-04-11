@@ -8,8 +8,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.halilibo.richtext.markdown.rtl.LocalCompatibilityTextAlignOverride
+import com.halilibo.richtext.markdown.rtl.fillMaxWidthForRtlCompatibility
 import com.halilibo.richtext.markdown.rtl.firstStrongTextDirection
-import com.halilibo.richtext.markdown.rtl.toCompatibilityTextAlign
 import com.halilibo.richtext.markdown.rtl.toCompatibilityTextDirection
 import com.halilibo.richtext.markdown.node.AstBlockQuote
 import com.halilibo.richtext.markdown.node.AstCode
@@ -88,17 +88,15 @@ internal fun RichTextScope.MarkdownRichText(
 
   Text(
     text = richText,
-    modifier = if (compatibilityDirection != null) {
-      modifier.fillMaxWidth()
-    } else {
-      modifier
-    },
+    modifier = modifier.fillMaxWidthForRtlCompatibility(
+      enableRtlCompatibility = richTextRenderOptions.enableRtlCompatibility,
+      contentDirection = compatibilityDirection,
+    ),
     isLeafText = astNode.isLastInTree(),
     renderOptions = richTextRenderOptions,
     sharedAnimationState = markdownAnimationState,
     decorations = richTextDecorations,
-    textAlign = LocalCompatibilityTextAlignOverride.current
-      ?: compatibilityDirection.toCompatibilityTextAlign(),
+    textAlign = LocalCompatibilityTextAlignOverride.current,
     textDirection = textDirection,
   )
 }
