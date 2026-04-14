@@ -18,7 +18,7 @@ import com.halilibo.richtext.markdown.node.AstIndentedCodeBlock
 import com.halilibo.richtext.markdown.node.AstNode
 import com.halilibo.richtext.markdown.node.AstSoftLineBreak
 import com.halilibo.richtext.markdown.node.AstText
-import kotlin.text.CharDirectionality
+import com.halilibo.richtext.ui.rtl.firstStrongTextDirection
 
 /**
  * Lets list and quote containers override paragraph alignment without forcing a different
@@ -100,51 +100,4 @@ private fun TextDirection?.isOppositeOf(layoutDirection: LayoutDirection): Boole
   TextDirection.Ltr -> layoutDirection == LayoutDirection.Rtl
   TextDirection.Rtl -> layoutDirection == LayoutDirection.Ltr
   else -> false
-}
-
-/**
- * Scans text for the first strong bidi character and returns its direction.
- *
- * Examples:
- * - `"123 hello"` returns [TextDirection.Ltr].
- * - `"123 שלום"` returns [TextDirection.Rtl].
- *
- * Edge cases:
- * - With `stopAtLineBreak = true`, `"123\nhello"` returns `null` instead of
- *   [TextDirection.Ltr].
- * - With `ignoreHtmlTags = true`, `"<b>שלום</b>"` returns [TextDirection.Rtl] rather than
- *   treating tag characters as content.
- */
-internal fun CharSequence.firstStrongTextDirection(
-  stopAtLineBreak: Boolean = false,
-  ignoreHtmlTags: Boolean = false,
-  onLineBreak: () -> Unit = {},
-): TextDirection? {
-  var insideHtmlTag = false
-  for (char in this) {
-    if (stopAtLineBreak && (char == '\n' || char == '\r')) {
-      onLineBreak()
-      return null
-    }
-
-    when {
-      ignoreHtmlTags && char == '<' -> insideHtmlTag = true
-      ignoreHtmlTags && insideHtmlTag && char == '>' -> insideHtmlTag = false
-      ignoreHtmlTags && insideHtmlTag -> Unit
-      else -> when (char.directionality) {
-        CharDirectionality.LEFT_TO_RIGHT,
-        CharDirectionality.LEFT_TO_RIGHT_EMBEDDING,
-        CharDirectionality.LEFT_TO_RIGHT_OVERRIDE -> return TextDirection.Ltr
-
-        CharDirectionality.RIGHT_TO_LEFT,
-        CharDirectionality.RIGHT_TO_LEFT_ARABIC,
-        CharDirectionality.RIGHT_TO_LEFT_EMBEDDING,
-        CharDirectionality.RIGHT_TO_LEFT_OVERRIDE -> return TextDirection.Rtl
-
-        else -> Unit
-      }
-    }
-  }
-
-  return null
 }

@@ -24,13 +24,30 @@ kotlin {
         implementation(compose.foundation)
       }
     }
-    val commonTest by getting
+    val commonTest by getting {
+      dependencies {
+        implementation(Kotlin.Test.common)
+        implementation(Kotlin.Test.annotations)
+      }
+    }
+
+    val androidUnitTest by getting {
+      dependencies {
+        implementation(Kotlin.Test.jdk)
+      }
+    }
 
     val androidMain by getting {
       kotlin.srcDir("src/commonJvmAndroid/kotlin")
     }
     val jvmMain by getting {
       kotlin.srcDir("src/commonJvmAndroid/kotlin")
+    }
+
+    val jvmTest by getting {
+      dependencies {
+        implementation(Kotlin.Test.jdk)
+      }
     }
   }
 }

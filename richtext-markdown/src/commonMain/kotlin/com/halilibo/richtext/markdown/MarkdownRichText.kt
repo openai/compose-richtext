@@ -9,7 +9,6 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.halilibo.richtext.markdown.rtl.LocalCompatibilityTextAlignOverride
 import com.halilibo.richtext.markdown.rtl.fillMaxWidthForRtlCompatibility
-import com.halilibo.richtext.markdown.rtl.firstStrongTextDirection
 import com.halilibo.richtext.markdown.rtl.toCompatibilityTextDirection
 import com.halilibo.richtext.markdown.node.AstBlockQuote
 import com.halilibo.richtext.markdown.node.AstCode
@@ -31,6 +30,7 @@ import com.halilibo.richtext.markdown.node.AstText
 import com.halilibo.richtext.ui.BlockQuote
 import com.halilibo.richtext.ui.FormattedList
 import com.halilibo.richtext.ui.RichTextScope
+import com.halilibo.richtext.ui.rtl.firstStrongTextDirection
 import com.halilibo.richtext.ui.string.InlineContent
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
 import com.halilibo.richtext.ui.string.RichTextDecorations
