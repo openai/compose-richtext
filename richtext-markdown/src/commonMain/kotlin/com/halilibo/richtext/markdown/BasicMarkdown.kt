@@ -7,11 +7,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import com.halilibo.richtext.markdown.rtl.LocalCompatibilityTextAlignOverride
-import com.halilibo.richtext.markdown.rtl.fillMaxWidthForRtlCompatibility
-import com.halilibo.richtext.markdown.rtl.firstStrongTextDirectionInFirstLine
-import com.halilibo.richtext.markdown.rtl.toCompatibilityTextAlign
-import com.halilibo.richtext.markdown.rtl.toCompatibilityTextDirection
 import com.halilibo.richtext.markdown.node.AstBlockNodeType
 import com.halilibo.richtext.markdown.node.AstBlockQuote
 import com.halilibo.richtext.markdown.node.AstDocument
@@ -41,6 +36,11 @@ import com.halilibo.richtext.ui.HorizontalRule
 import com.halilibo.richtext.ui.ListType.Ordered
 import com.halilibo.richtext.ui.ListType.Unordered
 import com.halilibo.richtext.ui.RichTextScope
+import com.halilibo.richtext.ui.rtl.LocalCompatibilityTextAlignOverride
+import com.halilibo.richtext.ui.rtl.fillMaxWidthForRtlCompatibility
+import com.halilibo.richtext.ui.rtl.firstStrongTextDirectionInFirstLine
+import com.halilibo.richtext.ui.rtl.toCompatibilityTextAlign
+import com.halilibo.richtext.ui.rtl.toCompatibilityTextDirection
 import com.halilibo.richtext.ui.string.InlineContent
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
 import com.halilibo.richtext.ui.string.RichTextDecorations

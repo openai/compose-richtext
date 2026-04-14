@@ -2,10 +2,6 @@ package com.halilibo.richtext.markdown
 
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
-import com.halilibo.richtext.markdown.rtl.firstStrongTextDirection
-import com.halilibo.richtext.markdown.rtl.firstStrongTextDirectionInFirstLine
-import com.halilibo.richtext.markdown.rtl.toCompatibilityTextAlign
-import com.halilibo.richtext.markdown.rtl.toCompatibilityTextDirection
 import com.halilibo.richtext.markdown.node.AstCode
 import com.halilibo.richtext.markdown.node.AstFencedCodeBlock
 import com.halilibo.richtext.markdown.node.AstHtmlBlock
@@ -16,6 +12,10 @@ import com.halilibo.richtext.markdown.node.AstNodeLinks
 import com.halilibo.richtext.markdown.node.AstParagraph
 import com.halilibo.richtext.markdown.node.AstSoftLineBreak
 import com.halilibo.richtext.markdown.node.AstText
+import com.halilibo.richtext.ui.rtl.firstStrongTextDirection
+import com.halilibo.richtext.ui.rtl.firstStrongTextDirectionInFirstLine
+import com.halilibo.richtext.ui.rtl.toCompatibilityTextAlign
+import com.halilibo.richtext.ui.rtl.toCompatibilityTextDirection
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
