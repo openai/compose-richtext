@@ -8,6 +8,9 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.ParagraphStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -17,7 +20,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import com.halilibo.richtext.ui.rtl.fillMaxWidthForRtlCompatibility
+import com.halilibo.richtext.ui.rtl.firstStrongTextDirection
 import com.halilibo.richtext.ui.rtl.toCompatibilityDirection
+import com.halilibo.richtext.ui.rtl.toCompatibilityTextAlign
+import com.halilibo.richtext.ui.rtl.toCompatibilityTextDirection
 import com.halilibo.richtext.ui.string.MarkdownAnimationState
 import com.halilibo.richtext.ui.string.RichTextRenderOptions
 
@@ -82,15 +88,31 @@ internal fun CodeBlockStyle.resolveDefaults() = CodeBlockStyle(
     textAlign = textAlign,
     textDirection = textDirection,
   ) {
-    Text(
-      text = text,
-      modifier = Modifier.fillMaxWidthForRtlCompatibility(
-        enableRtlCompatibility = richTextRenderOptions.enableRtlCompatibility,
-        contentDirection = compatibilityDirection,
-      ),
-      textAlign = textAlign,
-      textDirection = textDirection,
+    val textModifier = Modifier.fillMaxWidthForRtlCompatibility(
+      enableRtlCompatibility = richTextRenderOptions.enableRtlCompatibility,
+      contentDirection = compatibilityDirection,
     )
+
+    if (richTextRenderOptions.enableRtlCompatibility) {
+      val codeBlockText = remember(text, textAlign, textDirection) {
+        text.applyLineDirectionForCodeBlock(
+          fallbackTextAlign = textAlign,
+          fallbackTextDirection = textDirection,
+        )
+      }
+
+      Text(
+        text = codeBlockText,
+        modifier = textModifier,
+      )
+    } else {
+      Text(
+        text = text,
+        modifier = textModifier,
+        textAlign = textAlign,
+        textDirection = textDirection,
+      )
+    }
   }
 }
 
@@ -149,3 +171,63 @@ internal expect fun RichTextScope.CodeBlockLayout(
   wordWrap: Boolean,
   children: @Composable RichTextScope.(Modifier) -> Unit
 )
+
+internal fun String.applyLineDirectionForCodeBlock(
+  fallbackTextAlign: TextAlign?,
+  fallbackTextDirection: TextDirection?,
+): AnnotatedString {
+  val fallbackParagraphStyle = ParagraphStyle(
+    textAlign = fallbackTextAlign ?: TextAlign.Unspecified,
+    textDirection = fallbackTextDirection ?: TextDirection.Unspecified,
+  ).takeIf {
+    fallbackTextAlign != null || fallbackTextDirection != null
+  }
+
+  return buildAnnotatedString {
+    append(this@applyLineDirectionForCodeBlock)
+
+    var lineStart = 0
+    while (lineStart < length) {
+      val lineBreakIndex = indexOfLineBreak(startIndex = lineStart)
+      val lineEnd = lineBreakIndex.takeIf { it >= 0 } ?: length
+      val nextLineStart = when {
+        lineBreakIndex < 0 -> length
+        this@applyLineDirectionForCodeBlock[lineBreakIndex] == '\r' &&
+          lineBreakIndex + 1 < length &&
+          this@applyLineDirectionForCodeBlock[lineBreakIndex + 1] == '\n' -> lineBreakIndex + 2
+        else -> lineBreakIndex + 1
+      }
+
+      val paragraphStyle = this@applyLineDirectionForCodeBlock
+        .subSequence(lineStart, lineEnd)
+        .firstStrongTextDirection()
+        ?.let { direction ->
+          ParagraphStyle(
+            textAlign = direction.toCompatibilityTextAlign() ?: TextAlign.Unspecified,
+            textDirection = direction.toCompatibilityTextDirection() ?: TextDirection.Unspecified,
+          )
+        }
+        ?: fallbackParagraphStyle
+
+      if (paragraphStyle != null) {
+        addStyle(
+          paragraphStyle,
+          start = lineStart,
+          end = nextLineStart,
+        )
+      }
+
+      lineStart = nextLineStart
+    }
+  }
+}
+
+private fun CharSequence.indexOfLineBreak(startIndex: Int): Int {
+  for (index in startIndex until length) {
+    if (this[index] == '\n' || this[index] == '\r') {
+      return index
+    }
+  }
+
+  return -1
+}
