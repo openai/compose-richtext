@@ -1,8 +1,5 @@
 package com.halilibo.richtext.markdown
 
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -11,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import com.halilibo.richtext.markdown.rtl.LocalCompatibilityTextAlignOverride
+import com.halilibo.richtext.markdown.rtl.fillMaxWidthForRtlCompatibility
 import com.halilibo.richtext.markdown.rtl.firstStrongTextDirectionInFirstLine
 import com.halilibo.richtext.markdown.rtl.toCompatibilityTextAlign
 import com.halilibo.richtext.markdown.rtl.toCompatibilityTextDirection
@@ -35,7 +33,6 @@ import com.halilibo.richtext.markdown.node.AstTableRow
 import com.halilibo.richtext.markdown.node.AstText
 import com.halilibo.richtext.markdown.node.AstThematicBreak
 import com.halilibo.richtext.markdown.node.AstUnorderedList
-import com.halilibo.richtext.ui.BasicRichText
 import com.halilibo.richtext.ui.BlockQuote
 import com.halilibo.richtext.ui.CodeBlock
 import com.halilibo.richtext.ui.FormattedList
@@ -95,29 +92,15 @@ public fun RichTextScope.BasicMarkdown(
 ) {
   val markdownAnimationState = remember { MarkdownAnimationState() }
 
-  if (richTextRenderOptions.enableRtlCompatibility && astNode.type is AstDocument) {
-    BasicRichText(modifier = Modifier.width(IntrinsicSize.Max)) {
-      RecursiveRenderMarkdownAst(
-        astNode = astNode,
-        contentOverride = contentOverride,
-        inlineContentOverride = inlineContentOverride,
-        richTextRenderOptions = richTextRenderOptions,
-        richTextDecorations = richTextDecorations,
-        markdownAnimationState = markdownAnimationState,
-        astNodeComposer = astBlockNodeComposer,
-      )
-    }
-  } else {
-    RecursiveRenderMarkdownAst(
-      astNode = astNode,
-      contentOverride = contentOverride,
-      inlineContentOverride = inlineContentOverride,
-      richTextRenderOptions = richTextRenderOptions,
-      richTextDecorations = richTextDecorations,
-      markdownAnimationState = markdownAnimationState,
-      astNodeComposer = astBlockNodeComposer,
-    )
-  }
+  RecursiveRenderMarkdownAst(
+    astNode = astNode,
+    contentOverride = contentOverride,
+    inlineContentOverride = inlineContentOverride,
+    richTextRenderOptions = richTextRenderOptions,
+    richTextDecorations = richTextDecorations,
+    markdownAnimationState = markdownAnimationState,
+    astNodeComposer = astBlockNodeComposer,
+  )
 }
 
 /**
@@ -345,7 +328,10 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
           text = astNodeType.literal.trim(),
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
-          modifier = if (compatibilityDirection != null) Modifier.fillMaxWidth() else Modifier,
+          modifier = Modifier.fillMaxWidthForRtlCompatibility(
+            enableRtlCompatibility = richTextRenderOptions.enableRtlCompatibility,
+            contentDirection = compatibilityDirection,
+          ),
           textDirection = compatibilityDirection.toCompatibilityTextDirection(),
           textAlign = compatibilityDirection.toCompatibilityTextAlign(),
         )
@@ -356,7 +342,10 @@ private val DefaultAstNodeComposer = object : AstBlockNodeComposer {
           text = astNodeType.literal.trim(),
           markdownAnimationState = markdownAnimationState,
           richTextRenderOptions = richTextRenderOptions,
-          modifier = if (compatibilityDirection != null) Modifier.fillMaxWidth() else Modifier,
+          modifier = Modifier.fillMaxWidthForRtlCompatibility(
+            enableRtlCompatibility = richTextRenderOptions.enableRtlCompatibility,
+            contentDirection = compatibilityDirection,
+          ),
           textDirection = compatibilityDirection.toCompatibilityTextDirection(),
           textAlign = compatibilityDirection.toCompatibilityTextAlign(),
         )

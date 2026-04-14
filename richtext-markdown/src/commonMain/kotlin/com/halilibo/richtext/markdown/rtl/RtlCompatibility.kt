@@ -1,8 +1,13 @@
 package com.halilibo.richtext.markdown.rtl
 
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.unit.LayoutDirection
 import com.halilibo.richtext.markdown.childrenSequence
 import com.halilibo.richtext.markdown.node.AstCode
 import com.halilibo.richtext.markdown.node.AstFencedCodeBlock
@@ -76,6 +81,25 @@ internal fun TextDirection?.toCompatibilityTextDirection(): TextDirection? = whe
   TextDirection.Ltr -> TextDirection.ContentOrLtr
   TextDirection.Rtl -> TextDirection.ContentOrRtl
   else -> null
+}
+
+@Composable
+internal fun Modifier.fillMaxWidthForRtlCompatibility(
+  enableRtlCompatibility: Boolean,
+  contentDirection: TextDirection?,
+): Modifier = if (
+  enableRtlCompatibility &&
+  contentDirection.isOppositeOf(LocalLayoutDirection.current)
+) {
+  fillMaxWidth()
+} else {
+  this
+}
+
+private fun TextDirection?.isOppositeOf(layoutDirection: LayoutDirection): Boolean = when (this) {
+  TextDirection.Ltr -> layoutDirection == LayoutDirection.Rtl
+  TextDirection.Rtl -> layoutDirection == LayoutDirection.Ltr
+  else -> false
 }
 
 /**
