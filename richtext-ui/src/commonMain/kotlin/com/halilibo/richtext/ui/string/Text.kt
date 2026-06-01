@@ -163,13 +163,10 @@ public fun RichTextScope.Text(
   val accentTextMeasurer = rememberTextMeasurer(cacheSize = 1)
   val accentOverlayText = remember(
     animatedResult?.accentOverlayText,
-    renderOptions.streamingTextAccent?.color,
     textAlign,
     textDirection,
   ) {
-    val accentColor = renderOptions.streamingTextAccent?.color ?: return@remember null
     animatedResult?.accentOverlayText
-      ?.withForegroundColor(accentColor)
       ?.let { applyParagraphStyle(it, textAlign, textDirection) }
   }
   val accentTextLayoutResult = remember(accentOverlayText, textLayoutResult) {
@@ -575,11 +572,6 @@ private fun rememberAnimatedTextResult(
   )
 }
 
-private fun AnnotatedString.withForegroundColor(color: Color): AnnotatedString = buildAnnotatedString {
-  append(this@withForegroundColor)
-  addStyle(SpanStyle(color = color), 0, length)
-}
-
 private class TextAnimation(val startIndex: Int) {
 
   var alpha by mutableFloatStateOf(0f)
@@ -830,8 +822,7 @@ private fun Modifier.streamingTextAccentOverlay(
             if (start < end) clipPath(layoutResult.getPathForRange(start, end)) {
               drawText(
                 textLayoutResult = layoutResult,
-                color = accentColor,
-                alpha = accentColor.alpha * alpha,
+                color = accentColor.copy(alpha = accentColor.alpha * alpha),
               )
             }
           }
