@@ -388,6 +388,27 @@ public class MarkdownAnimationState {
   ): Float =
     (1f - (now - accent.decayStartTimeMark).inWholeMilliseconds /
       accent.decayDurationMs.toFloat()).coerceIn(0f, 1f)
+
+  internal fun streamingTextAccentInitialAlpha(
+    accent: StreamingTextAccent,
+    admissionTimeMark: ComparableTimeMark,
+    startTimeMark: ComparableTimeMark,
+  ): Float =
+    minOf(
+      streamingTextAccentInitialAlpha(accent, admissionTimeMark),
+      streamingTextAccentInitialAlpha(accent, startTimeMark),
+    )
+
+  internal fun streamingTextAccentDurationMs(
+    accent: StreamingTextAccent,
+    startTimeMark: ComparableTimeMark,
+  ): Int {
+    val elapsedDecayMs = (startTimeMark - accent.decayStartTimeMark).inWholeMilliseconds
+    val remainingDecayMs = accent.decayDurationMs - elapsedDecayMs
+    return minOf(accent.fadeOutMs.toLong(), remainingDecayMs)
+      .coerceAtLeast(0)
+      .toInt()
+  }
 }
 
 private data class AnimatedTextResult(
@@ -424,20 +445,30 @@ private fun rememberAnimatedTextResult(
     startTimeMark: ComparableTimeMark,
     admissionTimeMark: ComparableTimeMark ->
     val accent = renderOptions.streamingTextAccent ?: return@addAccent
-    // Decay admission when text becomes accent-eligible, not when delayed reveal begins.
-    val initialAlpha = sharedAnimationState.streamingTextAccentInitialAlpha(accent, admissionTimeMark)
+    // Admission decides whether text belongs to the opening response, while scheduled reveal time
+    // controls the visible strength so delayed words do not pop in at full accent intensity.
+    val initialAlpha = sharedAnimationState.streamingTextAccentInitialAlpha(
+      accent = accent,
+      admissionTimeMark = admissionTimeMark,
+      startTimeMark = startTimeMark,
+    )
     if (initialAlpha <= 0f) return@addAccent
+    val durationMs = sharedAnimationState.streamingTextAccentDurationMs(
+      accent = accent,
+      startTimeMark = startTimeMark,
+    )
+    if (durationMs <= 0) return@addAccent
     val elapsedMs = startTimeMark.elapsedMilliseconds().toInt()
-    if (elapsedMs >= accent.fadeOutMs) return@addAccent
+    if (elapsedMs >= durationMs) return@addAccent
 
     if (streamingTextAccentAnimations.size >= MaximumStreamingTextAccentAnimationCount) {
-      streamingTextAccentAnimations.keys.minOrNull()?.let(streamingTextAccentAnimations::remove)
+      return@addAccent
     }
     val id = nextStreamingTextAccentAnimationId.intValue++
     val animation = StreamingTextAccentAnimation(
       start = start,
       end = end,
-      fadeOutMs = accent.fadeOutMs,
+      durationMs = durationMs,
       excludesEmoji = accent.excludesEmoji,
       initialAlpha = initialAlpha,
       elapsedMs = elapsedMs.toFloat(),
@@ -596,7 +627,7 @@ private class TextAnimation(val startIndex: Int) {
 private class StreamingTextAccentAnimation(
   val start: Int,
   val end: Int,
-  val fadeOutMs: Int,
+  val durationMs: Int,
   val excludesEmoji: Boolean,
   private val initialAlpha: Float,
   elapsedMs: Float,
@@ -604,11 +635,10 @@ private class StreamingTextAccentAnimation(
 ) {
   var hasStarted by mutableStateOf(hasStarted)
   var elapsedMs by mutableFloatStateOf(elapsedMs)
-  val durationMs = fadeOutMs
 
   fun alpha(): Float {
     if (!hasStarted) return 0f
-    val progress = (elapsedMs / fadeOutMs).coerceIn(0f, 1f)
+    val progress = (elapsedMs / durationMs).coerceIn(0f, 1f)
     return initialAlpha * (1f - StreamingTextAccentFadeEasing.transform(progress))
   }
 }
@@ -972,7 +1002,7 @@ private data class DynamicSolidColor(private val color: Color, private val alpha
 }
 
 private const val CombiningEnclosingKeycap = 0x20E3
-private const val MaximumStreamingTextAccentAnimationCount = 24
+private const val MaximumStreamingTextAccentAnimationCount = 48
 private val StreamingTextAccentFadeEasing = CubicBezierEasing(0.42f, 0f, 0.58f, 1f)
 private const val VariationSelector16 = 0xFE0F
 private const val ZeroWidthJoiner = 0x200D
