@@ -410,9 +410,14 @@ private fun rememberAnimatedTextResult(
   val lastAnimationIndex = remember { mutableIntStateOf(-1) }
   val lastPhrases = remember { mutableStateOf(PhraseAnnotatedString()) }
   val lastStreamingTextAccent = remember { mutableStateOf<StreamingTextAccent?>(null) }
-  val addStreamingTextAccentAnimation = addAccent@{ start: Int, end: Int, startTimeMark: ComparableTimeMark ->
+  val addStreamingTextAccentAnimation = addAccent@{
+    start: Int,
+    end: Int,
+    startTimeMark: ComparableTimeMark,
+    admissionTimeMark: ComparableTimeMark ->
     val accent = renderOptions.streamingTextAccent ?: return@addAccent
-    val initialAlpha = sharedAnimationState.streamingTextAccentInitialAlpha(accent, startTimeMark)
+    // Decay admission when text becomes accent-eligible, not when delayed reveal begins.
+    val initialAlpha = sharedAnimationState.streamingTextAccentInitialAlpha(accent, admissionTimeMark)
     if (initialAlpha <= 0f) return@addAccent
     val elapsedMs = startTimeMark.elapsedMilliseconds().toInt()
     if (elapsedMs >= accent.fadeOutMs) return@addAccent
@@ -449,7 +454,9 @@ private fun rememberAnimatedTextResult(
       streamingTextAccentAnimations.remove(id)
     }
   }
-  val addStreamingTextAccentAnimations = addAccents@{ phrases: PhraseAnnotatedString ->
+  val addStreamingTextAccentAnimations = addAccents@{
+    phrases: PhraseAnnotatedString,
+    admissionTimeMark: ComparableTimeMark ->
     if (renderOptions.streamingTextAccent == null) return@addAccents
     streamingTextAccentAdditions(
       phraseSegments = phrases.phraseSegments,
@@ -461,6 +468,7 @@ private fun rememberAnimatedTextResult(
           addition.range.start,
           addition.range.end,
           startTimeMark,
+          admissionTimeMark,
         )
       }
     }
@@ -499,7 +507,7 @@ private fun rememberAnimatedTextResult(
           animations.remove(phraseIndex)
         }
       }
-    addStreamingTextAccentAnimations(phrases)
+    addStreamingTextAccentAnimations(phrases, monotonicTimeMark())
   }
   LaunchedEffect(isLeafText, annotated, renderOptions.streamingTextAccent) {
     val shouldAccentExistingText =
@@ -516,7 +524,7 @@ private fun rememberAnimatedTextResult(
     if (hasNewPhrases) {
       updatePhrases(phrases)
     } else if (shouldAccentExistingText) {
-      addStreamingTextAccentAnimations(phrases)
+      addStreamingTextAccentAnimations(phrases, monotonicTimeMark())
     } else {
       return@LaunchedEffect
     }
