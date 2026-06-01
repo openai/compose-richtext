@@ -161,36 +161,44 @@ public fun RichTextScope.Text(
     )
   }
   val underlineAlphaForOffset = animatedResult?.alphaForOffset
-  val accentTextMeasurer = rememberTextMeasurer(cacheSize = 1)
-  val accentOverlayText = remember(
-    animatedResult?.accentOverlayText,
-    textAlign,
-    textDirection,
-  ) {
-    animatedResult?.accentOverlayText
-      ?.let { applyParagraphStyle(it, textAlign, textDirection) }
-  }
-  val accentTextLayoutResult = remember(accentOverlayText, textLayoutResult) {
-    val layoutInput = textLayoutResult?.layoutInput ?: return@remember null
-    accentOverlayText?.let { text ->
-      accentTextMeasurer.measure(
-        text = text,
-        style = layoutInput.style,
-        overflow = layoutInput.overflow,
-        softWrap = layoutInput.softWrap,
-        maxLines = layoutInput.maxLines,
-        placeholders = layoutInput.placeholders,
-        constraints = layoutInput.constraints,
-        layoutDirection = layoutInput.layoutDirection,
-        density = layoutInput.density,
-        fontFamilyResolver = layoutInput.fontFamilyResolver,
-      )
+  val streamingTextAccent = renderOptions.streamingTextAccent
+  val streamingTextAccentAnimations = animatedResult?.streamingTextAccentAnimations.orEmpty()
+  val hasStreamingTextAccentOverlay =
+    streamingTextAccent != null && streamingTextAccentAnimations.isNotEmpty()
+  val accentTextLayoutResult = if (hasStreamingTextAccentOverlay) {
+    val accentTextMeasurer = rememberTextMeasurer(cacheSize = 1)
+    val accentOverlayText = remember(
+      animatedResult?.accentOverlayText,
+      textAlign,
+      textDirection,
+    ) {
+      animatedResult?.accentOverlayText
+        ?.let { applyParagraphStyle(it, textAlign, textDirection) }
     }
+    remember(accentOverlayText, textLayoutResult) {
+      val layoutInput = textLayoutResult?.layoutInput ?: return@remember null
+      accentOverlayText?.let { text ->
+        accentTextMeasurer.measure(
+          text = text,
+          style = layoutInput.style,
+          overflow = layoutInput.overflow,
+          softWrap = layoutInput.softWrap,
+          maxLines = layoutInput.maxLines,
+          placeholders = layoutInput.placeholders,
+          constraints = layoutInput.constraints,
+          layoutDirection = layoutInput.layoutDirection,
+          density = layoutInput.density,
+          fontFamilyResolver = layoutInput.fontFamilyResolver,
+        )
+      }
+    }
+  } else {
+    null
   }
   val streamingTextAccentModifier = Modifier.streamingTextAccentOverlay(
-    accentColor = renderOptions.streamingTextAccent?.color,
+    accentColor = streamingTextAccent?.color,
     textLayoutResult = { accentTextLayoutResult },
-    animations = animatedResult?.streamingTextAccentAnimations.orEmpty(),
+    animations = streamingTextAccentAnimations,
   )
 
   val underlineModifier = if (underlineSpecs.isNotEmpty()) {
@@ -808,7 +816,7 @@ private fun Modifier.streamingTextAccentOverlay(
   accentColor: Color?,
   textLayoutResult: () -> TextLayoutResult?,
   animations: Map<Int, StreamingTextAccentAnimation>,
-): Modifier = if (accentColor == null) {
+): Modifier = if (accentColor == null || animations.isEmpty()) {
   this
 } else {
   drawWithContent {
