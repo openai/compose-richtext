@@ -122,6 +122,63 @@ class StreamingTextAccentRangesTest {
   }
 
   @Test
+  fun initialAlphaUsesScheduledRevealTimeForStrength() {
+    val decayStartTimeMark = TimeSource.Monotonic.markNow()
+    val accent = StreamingTextAccent(
+      color = Color.Red,
+      decayDurationMs = 2_000,
+      decayStartTimeMark = decayStartTimeMark,
+    )
+
+    assertEquals(
+      0.25f,
+      MarkdownAnimationState().streamingTextAccentInitialAlpha(
+        accent = accent,
+        admissionTimeMark = decayStartTimeMark + 200.milliseconds,
+        startTimeMark = decayStartTimeMark + 1_500.milliseconds,
+      ),
+    )
+  }
+
+  @Test
+  fun durationUsesConfiguredFadeWithinDecayWindow() {
+    val decayStartTimeMark = TimeSource.Monotonic.markNow()
+    val accent = StreamingTextAccent(
+      color = Color.Red,
+      fadeOutMs = 600,
+      decayDurationMs = 2_000,
+      decayStartTimeMark = decayStartTimeMark,
+    )
+
+    assertEquals(
+      600,
+      MarkdownAnimationState().streamingTextAccentDurationMs(
+        accent = accent,
+        startTimeMark = decayStartTimeMark + 500.milliseconds,
+      ),
+    )
+  }
+
+  @Test
+  fun durationEndsAtDecayWindow() {
+    val decayStartTimeMark = TimeSource.Monotonic.markNow()
+    val accent = StreamingTextAccent(
+      color = Color.Red,
+      fadeOutMs = 2_000,
+      decayDurationMs = 2_000,
+      decayStartTimeMark = decayStartTimeMark,
+    )
+
+    assertEquals(
+      500,
+      MarkdownAnimationState().streamingTextAccentDurationMs(
+        accent = accent,
+        startTimeMark = decayStartTimeMark + 1_500.milliseconds,
+      ),
+    )
+  }
+
+  @Test
   fun additionsUseImmutableAppendedRanges() {
     val accentedEndByAnimationIndex = mutableMapOf<Int, Int>()
 
