@@ -1,6 +1,8 @@
 package com.halilibo.richtext.ui.string
 
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -9,7 +11,6 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,6 +26,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Shader
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.AnnotatedString
@@ -32,6 +34,8 @@ import androidx.compose.ui.text.ParagraphStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,7 +53,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.pow
 import kotlin.math.roundToInt
+import kotlin.time.ComparableTimeMark
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TimeSource
 
 /**
  * Renders a [RichTextString] as created with [richTextString].
@@ -155,6 +161,37 @@ public fun RichTextScope.Text(
     )
   }
   val underlineAlphaForOffset = animatedResult?.alphaForOffset
+  val accentTextMeasurer = rememberTextMeasurer(cacheSize = 1)
+  val accentOverlayText = remember(
+    animatedResult?.accentOverlayText,
+    textAlign,
+    textDirection,
+  ) {
+    animatedResult?.accentOverlayText
+      ?.let { applyParagraphStyle(it, textAlign, textDirection) }
+  }
+  val accentTextLayoutResult = remember(accentOverlayText, textLayoutResult) {
+    val layoutInput = textLayoutResult?.layoutInput ?: return@remember null
+    accentOverlayText?.let { text ->
+      accentTextMeasurer.measure(
+        text = text,
+        style = layoutInput.style,
+        overflow = layoutInput.overflow,
+        softWrap = layoutInput.softWrap,
+        maxLines = layoutInput.maxLines,
+        placeholders = layoutInput.placeholders,
+        constraints = layoutInput.constraints,
+        layoutDirection = layoutInput.layoutDirection,
+        density = layoutInput.density,
+        fontFamilyResolver = layoutInput.fontFamilyResolver,
+      )
+    }
+  }
+  val streamingTextAccentModifier = Modifier.streamingTextAccentOverlay(
+    accentColor = renderOptions.streamingTextAccent?.color,
+    textLayoutResult = { accentTextLayoutResult },
+    animations = animatedResult?.streamingTextAccentAnimations.orEmpty(),
+  )
 
   val underlineModifier = if (underlineSpecs.isNotEmpty()) {
     Modifier.drawWithContent {
@@ -185,7 +222,7 @@ public fun RichTextScope.Text(
       softWrap = softWrap,
       overflow = overflow,
       maxLines = maxLines,
-      modifier = modifier.then(underlineModifier),
+      modifier = modifier.then(underlineModifier).then(streamingTextAccentModifier),
     )
   } else {
     val inlineTextConstraints = remember { mutableStateOf(Constraints()) }
@@ -204,7 +241,7 @@ public fun RichTextScope.Text(
       softWrap = softWrap,
       overflow = overflow,
       maxLines = maxLines,
-      modifier = modifier.then(underlineModifier).layout { measurable, constraints ->
+      modifier = modifier.then(underlineModifier).then(streamingTextAccentModifier).layout { measurable, constraints ->
         // Prepares the custom constraints InlineTextContents before they get measured.
         inlineTextConstraints.value = constraints.copy(minWidth = 0, minHeight = 0)
         val placeable = measurable.measure(constraints)
@@ -316,18 +353,16 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawUnderline(
 @Stable
 public class MarkdownAnimationState {
 
-  private var lastAnimationStartMs by mutableLongStateOf(0L)
+  private var lastAnimationStartTimeMark by mutableStateOf<ComparableTimeMark?>(null)
 
   public fun addAnimation(renderOptions: RichTextRenderOptions) {
-    lastAnimationStartMs = calculatedDelay(renderOptions) + System.currentTimeMillis()
+    lastAnimationStartTimeMark = monotonicTimeMark() + calculatedDelay(renderOptions).milliseconds
   }
 
   private fun calculatedDelay(renderOptions: RichTextRenderOptions): Long {
-    val now = System.currentTimeMillis()
-    val diffMs = lastAnimationStartMs - now
+    val diffMs = lastAnimationStartTimeMark?.millisecondsFromNow() ?: return 0
 
     return when {
-      lastAnimationStartMs <= 0L -> 0
       diffMs < -renderOptions.delayMs -> 0 // We are past the last animation, so launch it now.
       diffMs <= 0 -> renderOptions.delayMs - diffMs
       else -> diffMs + (renderOptions.delayMs * (renderOptions.delayMs / diffMs.toDouble()).pow(
@@ -337,12 +372,21 @@ public class MarkdownAnimationState {
   }
 
   public fun toDelayMs(): Int =
-    (lastAnimationStartMs - System.currentTimeMillis()).coerceAtLeast(0).toInt()
+    lastAnimationStartTimeMark?.millisecondsUntilNow()?.toInt() ?: 0
+
+  internal fun streamingTextAccentInitialAlpha(
+    accent: StreamingTextAccent,
+    now: ComparableTimeMark = monotonicTimeMark(),
+  ): Float =
+    (1f - (now - accent.decayStartTimeMark).inWholeMilliseconds /
+      accent.decayDurationMs.toFloat()).coerceIn(0f, 1f)
 }
 
 private data class AnimatedTextResult(
   val text: AnnotatedString,
+  val accentOverlayText: AnnotatedString,
   val alphaForOffset: (Int) -> Float,
+  val streamingTextAccentAnimations: Map<Int, StreamingTextAccentAnimation>,
 )
 
 @Composable
@@ -355,10 +399,72 @@ private fun rememberAnimatedTextResult(
 ): AnimatedTextResult {
   val coroutineScope = rememberCoroutineScope()
   val animations = remember { mutableStateMapOf<Int, TextAnimation>() }
+  val streamingTextAccentAnimations = remember {
+    mutableStateMapOf<Int, StreamingTextAccentAnimation>()
+  }
+  val nextStreamingTextAccentAnimationId = remember { mutableIntStateOf(0) }
+  val animationStartTimeMarksByIndex = remember { mutableMapOf<Int, ComparableTimeMark>() }
+  val accentedEndByAnimationIndex = remember { mutableMapOf<Int, Int>() }
   val textToRender = remember { mutableStateOf(AnnotatedString("")) }
 
   val lastAnimationIndex = remember { mutableIntStateOf(-1) }
   val lastPhrases = remember { mutableStateOf(PhraseAnnotatedString()) }
+  val lastStreamingTextAccent = remember { mutableStateOf<StreamingTextAccent?>(null) }
+  val addStreamingTextAccentAnimation = addAccent@{ start: Int, end: Int, startTimeMark: ComparableTimeMark ->
+    val accent = renderOptions.streamingTextAccent ?: return@addAccent
+    val initialAlpha = sharedAnimationState.streamingTextAccentInitialAlpha(accent, startTimeMark)
+    if (initialAlpha <= 0f) return@addAccent
+    val elapsedMs = startTimeMark.elapsedMilliseconds().toInt()
+    if (elapsedMs >= accent.fadeOutMs) return@addAccent
+
+    if (streamingTextAccentAnimations.size >= MaximumStreamingTextAccentAnimationCount) {
+      streamingTextAccentAnimations.keys.minOrNull()?.let(streamingTextAccentAnimations::remove)
+    }
+    val id = nextStreamingTextAccentAnimationId.intValue++
+    val animation = StreamingTextAccentAnimation(
+      start = start,
+      end = end,
+      fadeOutMs = accent.fadeOutMs,
+      excludesEmoji = accent.excludesEmoji,
+      initialAlpha = initialAlpha,
+      elapsedMs = elapsedMs.toFloat(),
+      hasStarted = startTimeMark.hasPassedNow(),
+    )
+    streamingTextAccentAnimations[id] = animation
+    coroutineScope.launch {
+      delay(startTimeMark.millisecondsUntilNow().milliseconds)
+      animation.hasStarted = true
+      animation.elapsedMs = startTimeMark.elapsedMilliseconds().toFloat()
+      val remainingDurationMs = (animation.durationMs - animation.elapsedMs.toInt()).coerceAtLeast(0)
+      animate(
+        initialValue = animation.elapsedMs,
+        targetValue = animation.durationMs.toFloat(),
+        animationSpec = tween(
+          durationMillis = remainingDurationMs,
+          easing = LinearEasing,
+        ),
+      ) { value, _ ->
+        animation.elapsedMs = value
+      }
+      streamingTextAccentAnimations.remove(id)
+    }
+  }
+  val addStreamingTextAccentAnimations = addAccents@{ phrases: PhraseAnnotatedString ->
+    if (renderOptions.streamingTextAccent == null) return@addAccents
+    streamingTextAccentAdditions(
+      phraseSegments = phrases.phraseSegments,
+      renderedEnd = textToRender.value.length,
+      accentedEndByAnimationIndex = accentedEndByAnimationIndex,
+    ).forEach { addition ->
+      animationStartTimeMarksByIndex[addition.animationIndex]?.let { startTimeMark ->
+        addStreamingTextAccentAnimation(
+          addition.range.start,
+          addition.range.end,
+          startTimeMark,
+        )
+      }
+    }
+  }
   val updatePhrases = { phrases: PhraseAnnotatedString ->
     lastPhrases.value = phrases
     textToRender.value = phrases.makeCompletePhraseString(!isLeafText)
@@ -368,15 +474,17 @@ private fun rememberAnimatedTextResult(
         val animation = TextAnimation(phraseIndex)
         animations[phraseIndex] = animation
         lastAnimationIndex.intValue = phraseIndex
+        sharedAnimationState.addAnimation(renderOptions)
+        val delayMs = sharedAnimationState.toDelayMs()
+        animationStartTimeMarksByIndex[phraseIndex] = monotonicTimeMark() + delayMs.milliseconds
         coroutineScope.launch {
-          sharedAnimationState.addAnimation(renderOptions)
           var hasAnimationFired = false
           animate(
             initialValue = 0f,
             targetValue = 1f,
             animationSpec = tween(
               durationMillis = renderOptions.textFadeInMs,
-              delayMillis = sharedAnimationState.toDelayMs(),
+              delayMillis = delayMs,
             )
           ) { value, _ ->
             animation.alpha = value
@@ -391,14 +499,27 @@ private fun rememberAnimatedTextResult(
           animations.remove(phraseIndex)
         }
       }
+    addStreamingTextAccentAnimations(phrases)
   }
-  LaunchedEffect(isLeafText, annotated) {
+  LaunchedEffect(isLeafText, annotated, renderOptions.streamingTextAccent) {
+    val shouldAccentExistingText =
+      lastStreamingTextAccent.value == null && renderOptions.streamingTextAccent != null
+    lastStreamingTextAccent.value = renderOptions.streamingTextAccent
     val isComplete = !isLeafText
     // If we detect a new phrase, kick off the animation now.
     val phrases = annotated.segmentIntoPhrases(renderOptions, isComplete = isComplete)
-    if (isComplete && phrases == lastPhrases.value) return@LaunchedEffect
-    if (!isComplete && !phrases.hasNewPhrasesFrom(lastPhrases.value)) return@LaunchedEffect
-    updatePhrases(phrases)
+    val hasNewPhrases = if (isComplete) {
+      phrases != lastPhrases.value
+    } else {
+      phrases.hasNewPhrasesFrom(lastPhrases.value)
+    }
+    if (hasNewPhrases) {
+      updatePhrases(phrases)
+    } else if (shouldAccentExistingText) {
+      addStreamingTextAccentAnimations(phrases)
+    } else {
+      return@LaunchedEffect
+    }
 
     if (!isComplete) {
       // In case no changes happen for a while, we'll render after some timeout
@@ -434,6 +555,7 @@ private fun rememberAnimatedTextResult(
 
   return AnimatedTextResult(
     text = text,
+    accentOverlayText = textToRender.value,
     alphaForOffset = { offset ->
       var bestStart = -1
       var bestAlpha = 1f
@@ -444,7 +566,8 @@ private fun rememberAnimatedTextResult(
         }
       }
       bestAlpha
-    }
+    },
+    streamingTextAccentAnimations = streamingTextAccentAnimations,
   )
 }
 
@@ -452,6 +575,270 @@ private class TextAnimation(val startIndex: Int) {
 
   var alpha by mutableFloatStateOf(0f)
   val isVisible by derivedStateOf { alpha > 0f }
+}
+
+private class StreamingTextAccentAnimation(
+  val start: Int,
+  val end: Int,
+  val fadeOutMs: Int,
+  val excludesEmoji: Boolean,
+  private val initialAlpha: Float,
+  elapsedMs: Float,
+  hasStarted: Boolean,
+) {
+  var hasStarted by mutableStateOf(hasStarted)
+  var elapsedMs by mutableFloatStateOf(elapsedMs)
+  val durationMs = fadeOutMs
+
+  fun alpha(): Float {
+    if (!hasStarted) return 0f
+    val progress = (elapsedMs / fadeOutMs).coerceIn(0f, 1f)
+    return initialAlpha * (1f - StreamingTextAccentFadeEasing.transform(progress))
+  }
+}
+
+internal data class StreamingTextAccentRange(
+  val start: Int,
+  val end: Int,
+)
+
+internal data class StreamingTextAccentAddition(
+  val animationIndex: Int,
+  val range: StreamingTextAccentRange,
+)
+
+internal fun streamingTextAccentAdditions(
+  phraseSegments: List<Int>,
+  renderedEnd: Int,
+  accentedEndByAnimationIndex: MutableMap<Int, Int>,
+): List<StreamingTextAccentAddition> = buildList {
+  phraseSegments.forEachIndexed { index, animationIndex ->
+    val end = minOf(phraseSegments.getOrNull(index + 1) ?: renderedEnd, renderedEnd)
+    val accentedEnd = accentedEndByAnimationIndex[animationIndex] ?: animationIndex
+    if (accentedEnd < end) {
+      add(
+        StreamingTextAccentAddition(
+          animationIndex = animationIndex,
+          range = StreamingTextAccentRange(accentedEnd, end),
+        )
+      )
+      accentedEndByAnimationIndex[animationIndex] = end
+    }
+  }
+}
+
+internal fun AnnotatedString.streamingTextAccentRanges(
+  start: Int,
+  end: Int,
+  excludesEmoji: Boolean,
+): List<StreamingTextAccentRange> {
+  val clampedStart = start.coerceIn(0, length)
+  val clampedEnd = end.coerceIn(0, length)
+  if (clampedStart >= clampedEnd) return emptyList()
+
+  var ranges = listOf(StreamingTextAccentRange(clampedStart, clampedEnd))
+  getLinkAnnotations(clampedStart, clampedEnd).forEach { link ->
+    ranges = ranges.excluding(
+      StreamingTextAccentRange(
+        start = link.start.coerceAtLeast(clampedStart),
+        end = link.end.coerceAtMost(clampedEnd),
+      )
+    )
+  }
+  return if (excludesEmoji) {
+    ranges.flatMap(text::nonEmojiRanges)
+  } else {
+    ranges
+  }
+}
+
+private fun List<StreamingTextAccentRange>.excluding(
+  excluded: StreamingTextAccentRange,
+): List<StreamingTextAccentRange> = flatMap { range ->
+  when {
+    excluded.end <= range.start || excluded.start >= range.end -> listOf(range)
+    else -> buildList {
+      if (range.start < excluded.start) {
+        add(StreamingTextAccentRange(range.start, excluded.start))
+      }
+      if (excluded.end < range.end) {
+        add(StreamingTextAccentRange(excluded.end, range.end))
+      }
+    }
+  }
+}
+
+private fun String.nonEmojiRanges(
+  range: StreamingTextAccentRange,
+): List<StreamingTextAccentRange> {
+  val ranges = mutableListOf<StreamingTextAccentRange>()
+  var rangeStart = range.start
+  var index = range.start
+  while (index < range.end) {
+    val emojiEnd = emojiClusterEnd(index, range.end)
+    if (emojiEnd == null) {
+      index += Character.charCount(Character.codePointAt(this, index))
+      continue
+    }
+    if (rangeStart < index) {
+      ranges += StreamingTextAccentRange(rangeStart, index)
+    }
+    index = emojiEnd
+    rangeStart = emojiEnd
+  }
+  if (rangeStart < range.end) {
+    ranges += StreamingTextAccentRange(rangeStart, range.end)
+  }
+  return ranges
+}
+
+private fun String.emojiClusterEnd(
+  start: Int,
+  end: Int,
+): Int? {
+  val first = Character.codePointAt(this, start)
+  if (first.isKeycapBase()) {
+    var index = start + Character.charCount(first)
+    if (codePointAtOrNull(index, end) == VariationSelector16) {
+      index += Character.charCount(VariationSelector16)
+    }
+    return if (codePointAtOrNull(index, end) == CombiningEnclosingKeycap) {
+      index + Character.charCount(CombiningEnclosingKeycap)
+    } else {
+      null
+    }
+  }
+
+  var index = start + Character.charCount(first)
+  if (first.isRegionalIndicator()) {
+    val second = codePointAtOrNull(index, end)
+    return if (second?.isRegionalIndicator() == true) {
+      index + Character.charCount(second)
+    } else {
+      index
+    }
+  }
+  if (!first.isEmojiPresentationCodePoint() && codePointAtOrNull(index, end) != VariationSelector16) {
+    return null
+  }
+  while (index < end) {
+    val codePoint = Character.codePointAt(this, index)
+    when {
+      codePoint == VariationSelector16 || codePoint.isEmojiModifier() -> {
+        index += Character.charCount(codePoint)
+      }
+      codePoint == ZeroWidthJoiner -> {
+        val next = index + Character.charCount(codePoint)
+        if (next >= end) return end
+        index = next + Character.charCount(Character.codePointAt(this, next))
+      }
+      else -> return index
+    }
+  }
+  return index
+}
+
+private fun String.codePointAtOrNull(index: Int, end: Int): Int? =
+  if (index < end) Character.codePointAt(this, index) else null
+
+private fun Int.isKeycapBase(): Boolean = this == '#'.code || this == '*'.code || this in '0'.code..'9'.code
+
+private fun Int.isEmojiModifier(): Boolean = this in 0x1F3FB..0x1F3FF
+
+private fun Int.isRegionalIndicator(): Boolean = this in 0x1F1E6..0x1F1FF
+
+private fun Int.isEmojiPresentationCodePoint(): Boolean = when (this) {
+  in 0x231A..0x231B,
+  in 0x23E9..0x23EC,
+  0x23F0,
+  0x23F3,
+  in 0x25FD..0x25FE,
+  in 0x2614..0x2615,
+  in 0x2648..0x2653,
+  0x267F,
+  0x2693,
+  0x26A1,
+  in 0x26AA..0x26AB,
+  in 0x26BD..0x26BE,
+  in 0x26C4..0x26C5,
+  0x26CE,
+  0x26D4,
+  0x26EA,
+  in 0x26F2..0x26F3,
+  0x26F5,
+  0x26FA,
+  0x26FD,
+  0x2705,
+  in 0x270A..0x270B,
+  0x2728,
+  0x274C,
+  0x274E,
+  in 0x2753..0x2755,
+  0x2757,
+  in 0x2795..0x2797,
+  0x27B0,
+  0x27BF,
+  0x1F004,
+  0x1F0CF,
+  0x1F18E,
+  in 0x1F191..0x1F19A,
+  in 0x1F1E6..0x1F1FF,
+  in 0x1F201..0x1F202,
+  0x1F21A,
+  0x1F22F,
+  in 0x1F232..0x1F23A,
+  in 0x1F250..0x1F251,
+  in 0x1F300..0x1FAFF,
+  -> true
+  else -> false
+}
+
+private fun monotonicTimeMark(): ComparableTimeMark = TimeSource.Monotonic.markNow()
+
+private fun ComparableTimeMark.millisecondsFromNow(): Long =
+  -elapsedNow().inWholeMilliseconds
+
+private fun ComparableTimeMark.millisecondsUntilNow(): Long =
+  millisecondsFromNow().coerceAtLeast(0)
+
+private fun ComparableTimeMark.elapsedMilliseconds(): Long =
+  elapsedNow().inWholeMilliseconds.coerceAtLeast(0)
+
+private fun Modifier.streamingTextAccentOverlay(
+  accentColor: Color?,
+  textLayoutResult: () -> TextLayoutResult?,
+  animations: Map<Int, StreamingTextAccentAnimation>,
+): Modifier = if (accentColor == null) {
+  this
+} else {
+  drawWithContent {
+    drawContent()
+    val layoutResult = textLayoutResult() ?: return@drawWithContent
+    val text = layoutResult.layoutInput.text
+    val textLength = layoutResult.layoutInput.text.length
+    animations.values
+      .sortedBy(StreamingTextAccentAnimation::start)
+      .forEach { animation ->
+        val end = minOf(animation.end, textLength)
+        val alpha = animation.alpha()
+        text.streamingTextAccentRanges(
+          start = animation.start,
+          end = end,
+          excludesEmoji = animation.excludesEmoji,
+        ).fastForEach { range ->
+          if (alpha > 0f) {
+            val start = range.start.coerceIn(0, textLength)
+            val end = range.end.coerceIn(0, textLength)
+            if (start < end) clipPath(layoutResult.getPathForRange(start, end)) {
+              drawText(
+                textLayoutResult = layoutResult,
+                color = accentColor.copy(alpha = accentColor.alpha * alpha),
+              )
+            }
+          }
+        }
+      }
+  }
 }
 
 private fun AnnotatedString.withDynamicColorPhrases(
@@ -567,3 +954,9 @@ private data class DynamicSolidColor(private val color: Color, private val alpha
     return LinearGradientShader(Offset.Zero, Offset(size.width, size.height), listOf(color, color))
   }
 }
+
+private const val CombiningEnclosingKeycap = 0x20E3
+private const val MaximumStreamingTextAccentAnimationCount = 24
+private val StreamingTextAccentFadeEasing = CubicBezierEasing(0.42f, 0f, 0.58f, 1f)
+private const val VariationSelector16 = 0xFE0F
+private const val ZeroWidthJoiner = 0x200D
