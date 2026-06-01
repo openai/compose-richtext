@@ -11,7 +11,6 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,7 +53,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.pow
 import kotlin.math.roundToInt
+import kotlin.time.ComparableTimeMark
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TimeSource
 
 /**
  * Renders a [RichTextString] as created with [richTextString].
@@ -352,18 +353,16 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawUnderline(
 @Stable
 public class MarkdownAnimationState {
 
-  private var lastAnimationStartMs by mutableLongStateOf(0L)
+  private var lastAnimationStartTimeMark by mutableStateOf<ComparableTimeMark?>(null)
 
   public fun addAnimation(renderOptions: RichTextRenderOptions) {
-    lastAnimationStartMs = calculatedDelay(renderOptions) + System.currentTimeMillis()
+    lastAnimationStartTimeMark = monotonicTimeMark() + calculatedDelay(renderOptions).milliseconds
   }
 
   private fun calculatedDelay(renderOptions: RichTextRenderOptions): Long {
-    val now = System.currentTimeMillis()
-    val diffMs = lastAnimationStartMs - now
+    val diffMs = lastAnimationStartTimeMark?.millisecondsFromNow() ?: return 0
 
     return when {
-      lastAnimationStartMs <= 0L -> 0
       diffMs < -renderOptions.delayMs -> 0 // We are past the last animation, so launch it now.
       diffMs <= 0 -> renderOptions.delayMs - diffMs
       else -> diffMs + (renderOptions.delayMs * (renderOptions.delayMs / diffMs.toDouble()).pow(
@@ -373,13 +372,14 @@ public class MarkdownAnimationState {
   }
 
   public fun toDelayMs(): Int =
-    (lastAnimationStartMs - System.currentTimeMillis()).coerceAtLeast(0).toInt()
+    lastAnimationStartTimeMark?.millisecondsUntilNow()?.toInt() ?: 0
 
   internal fun streamingTextAccentInitialAlpha(
     accent: StreamingTextAccent,
-    nowMs: Long = System.currentTimeMillis(),
+    now: ComparableTimeMark = monotonicTimeMark(),
   ): Float =
-    (1f - (nowMs - accent.decayStartMs) / accent.decayDurationMs.toFloat()).coerceIn(0f, 1f)
+    (1f - (now - accent.decayStartTimeMark).inWholeMilliseconds /
+      accent.decayDurationMs.toFloat()).coerceIn(0f, 1f)
 }
 
 private data class AnimatedTextResult(
@@ -403,19 +403,18 @@ private fun rememberAnimatedTextResult(
     mutableStateMapOf<Int, StreamingTextAccentAnimation>()
   }
   val nextStreamingTextAccentAnimationId = remember { mutableIntStateOf(0) }
-  val animationStartMsByIndex = remember { mutableMapOf<Int, Long>() }
+  val animationStartTimeMarksByIndex = remember { mutableMapOf<Int, ComparableTimeMark>() }
   val accentedEndByAnimationIndex = remember { mutableMapOf<Int, Int>() }
   val textToRender = remember { mutableStateOf(AnnotatedString("")) }
 
   val lastAnimationIndex = remember { mutableIntStateOf(-1) }
   val lastPhrases = remember { mutableStateOf(PhraseAnnotatedString()) }
   val lastStreamingTextAccent = remember { mutableStateOf<StreamingTextAccent?>(null) }
-  val addStreamingTextAccentAnimation = addAccent@{ start: Int, end: Int, startMs: Long ->
+  val addStreamingTextAccentAnimation = addAccent@{ start: Int, end: Int, startTimeMark: ComparableTimeMark ->
     val accent = renderOptions.streamingTextAccent ?: return@addAccent
-    val initialAlpha = sharedAnimationState.streamingTextAccentInitialAlpha(accent, startMs)
+    val initialAlpha = sharedAnimationState.streamingTextAccentInitialAlpha(accent, startTimeMark)
     if (initialAlpha <= 0f) return@addAccent
-    val nowMs = System.currentTimeMillis()
-    val elapsedMs = (nowMs - startMs).coerceAtLeast(0).toInt()
+    val elapsedMs = startTimeMark.elapsedMilliseconds().toInt()
     if (elapsedMs >= accent.fadeOutMs) return@addAccent
 
     if (streamingTextAccentAnimations.size >= MaximumStreamingTextAccentAnimationCount) {
@@ -429,13 +428,13 @@ private fun rememberAnimatedTextResult(
       excludesEmoji = accent.excludesEmoji,
       initialAlpha = initialAlpha,
       elapsedMs = elapsedMs.toFloat(),
-      hasStarted = startMs <= nowMs,
+      hasStarted = startTimeMark.hasPassedNow(),
     )
     streamingTextAccentAnimations[id] = animation
     coroutineScope.launch {
-      delay((startMs - System.currentTimeMillis()).coerceAtLeast(0).milliseconds)
+      delay(startTimeMark.millisecondsUntilNow().milliseconds)
       animation.hasStarted = true
-      animation.elapsedMs = (System.currentTimeMillis() - startMs).coerceAtLeast(0).toFloat()
+      animation.elapsedMs = startTimeMark.elapsedMilliseconds().toFloat()
       val remainingDurationMs = (animation.durationMs - animation.elapsedMs.toInt()).coerceAtLeast(0)
       animate(
         initialValue = animation.elapsedMs,
@@ -457,11 +456,11 @@ private fun rememberAnimatedTextResult(
       renderedEnd = textToRender.value.length,
       accentedEndByAnimationIndex = accentedEndByAnimationIndex,
     ).forEach { addition ->
-      animationStartMsByIndex[addition.animationIndex]?.let { startMs ->
+      animationStartTimeMarksByIndex[addition.animationIndex]?.let { startTimeMark ->
         addStreamingTextAccentAnimation(
           addition.range.start,
           addition.range.end,
-          startMs,
+          startTimeMark,
         )
       }
     }
@@ -477,7 +476,7 @@ private fun rememberAnimatedTextResult(
         lastAnimationIndex.intValue = phraseIndex
         sharedAnimationState.addAnimation(renderOptions)
         val delayMs = sharedAnimationState.toDelayMs()
-        animationStartMsByIndex[phraseIndex] = System.currentTimeMillis() + delayMs
+        animationStartTimeMarksByIndex[phraseIndex] = monotonicTimeMark() + delayMs.milliseconds
         coroutineScope.launch {
           var hasAnimationFired = false
           animate(
@@ -794,6 +793,17 @@ private fun Int.isEmojiPresentationCodePoint(): Boolean = when (this) {
   else -> false
 }
 
+private fun monotonicTimeMark(): ComparableTimeMark = TimeSource.Monotonic.markNow()
+
+private fun ComparableTimeMark.millisecondsFromNow(): Long =
+  -elapsedNow().inWholeMilliseconds
+
+private fun ComparableTimeMark.millisecondsUntilNow(): Long =
+  millisecondsFromNow().coerceAtLeast(0)
+
+private fun ComparableTimeMark.elapsedMilliseconds(): Long =
+  elapsedNow().inWholeMilliseconds.coerceAtLeast(0)
+
 private fun Modifier.streamingTextAccentOverlay(
   accentColor: Color?,
   textLayoutResult: () -> TextLayoutResult?,
@@ -801,9 +811,9 @@ private fun Modifier.streamingTextAccentOverlay(
 ): Modifier = if (accentColor == null) {
   this
 } else {
-  drawWithContent overlay@{
+  drawWithContent {
     drawContent()
-    val layoutResult = textLayoutResult() ?: return@overlay
+    val layoutResult = textLayoutResult() ?: return@drawWithContent
     val text = layoutResult.layoutInput.text
     val textLength = layoutResult.layoutInput.text.length
     animations.values

@@ -5,6 +5,8 @@ import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.buildAnnotatedString
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TimeSource
 
 class StreamingTextAccentRangesTest {
 
@@ -96,14 +98,27 @@ class StreamingTextAccentRangesTest {
 
   @Test
   fun decayStartIsSharedAcrossRecreatedAnimationStates() {
+    val decayStartTimeMark = TimeSource.Monotonic.markNow()
     val accent = StreamingTextAccent(
       color = Color.Red,
       decayDurationMs = 2_000,
-      decayStartMs = 1_000,
+      decayStartTimeMark = decayStartTimeMark,
     )
 
-    assertEquals(0.5f, MarkdownAnimationState().streamingTextAccentInitialAlpha(accent, nowMs = 2_000))
-    assertEquals(0f, MarkdownAnimationState().streamingTextAccentInitialAlpha(accent, nowMs = 3_000))
+    assertEquals(
+      0.5f,
+      MarkdownAnimationState().streamingTextAccentInitialAlpha(
+        accent,
+        now = decayStartTimeMark + 1_000.milliseconds,
+      ),
+    )
+    assertEquals(
+      0f,
+      MarkdownAnimationState().streamingTextAccentInitialAlpha(
+        accent,
+        now = decayStartTimeMark + 2_000.milliseconds,
+      ),
+    )
   }
 
   @Test

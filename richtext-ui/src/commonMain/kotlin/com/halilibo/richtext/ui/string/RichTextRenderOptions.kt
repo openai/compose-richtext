@@ -1,6 +1,8 @@
 package com.halilibo.richtext.ui.string
 
 import androidx.compose.ui.graphics.Color
+import kotlin.time.ComparableTimeMark
+import kotlin.time.TimeSource
 
 /**
  * Allows configuration of the Markdown renderer
@@ -28,15 +30,15 @@ public data class RichTextRenderOptions(
  * Draws a short-lived accent overlay above newly revealed streaming text.
  *
  * Each revealed text part fades independently while [decayDurationMs] reduces the starting alpha of
- * later parts relative to [decayStartMs]. This keeps the accent treatment limited to the opening
- * portion of a response even if its markdown blocks are recreated.
+ * later parts relative to [decayStartTimeMark]. This keeps the accent treatment limited to the
+ * opening portion of a response even if its markdown blocks are recreated.
  */
 public data class StreamingTextAccent(
   val color: Color,
   val fadeOutMs: Int = 600,
   val decayDurationMs: Int = 2_000,
   val excludesEmoji: Boolean = false,
-  val decayStartMs: Long = System.currentTimeMillis(),
+  val decayStartTimeMark: ComparableTimeMark = TimeSource.Monotonic.markNow(),
 ) {
   init {
     require(fadeOutMs > 0)
